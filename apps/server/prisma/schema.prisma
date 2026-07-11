@@ -42,9 +42,11 @@ model Drawing {
   publicId   String?        @map("public_id") @db.VarChar
   discipline Discipline?
   status     DrawingStatus?
-  parsedJson Json?          @map("parsed_json")
-  ocrOutput  String?        @map("ocr_output") @db.Text
-  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamp
+  parsedJson               Json?          @map("parsed_json")
+  ocrOutput                String?        @map("ocr_output") @db.Text
+  documentType             String?        @map("document_type") @db.VarChar
+  classificationConfidence Float?         @map("classification_confidence")
+  createdAt                DateTime       @default(now()) @map("created_at") @db.Timestamp
 
   conflicts  Conflict[]
 
