@@ -9,6 +9,9 @@ generator client {
 
 enum DrawingStatus {
   UPLOADED
+  OCR_PROCESSING
+  OCR_COMPLETED
+  OCR_FAILED
   PARSING
   PARSED
   FAILED
@@ -40,6 +43,7 @@ model Drawing {
   discipline Discipline?
   status     DrawingStatus?
   parsedJson Json?          @map("parsed_json")
+  ocrOutput  String?        @map("ocr_output") @db.Text
   createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamp
 
   conflicts  Conflict[]

@@ -72,10 +72,12 @@ app.get("/entries", async (_req, res) => {
 });
 
 import drawingRoutes from "./routes/drawing.routes";
+import analysisRoutes from "./routes/analysis.routes";
 import { errorHandler } from "./middleware/error.middleware";
 
 // Mount API routes
 app.use("/drawings", drawingRoutes);
+app.use("/drawings", analysisRoutes);
 
 // Register global error handler middleware
 app.use(errorHandler);
