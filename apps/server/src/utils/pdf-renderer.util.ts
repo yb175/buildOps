@@ -81,7 +81,7 @@ export async function renderPdfToImages(
     return buffers;
   } catch (err) {
     logger.error("[pdf-renderer] Rendering failed", err);
-    throw err;
+    return null;
   } finally {
     // Clean up temp files
     try {

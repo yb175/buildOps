@@ -21,6 +21,12 @@ describe("validateParsedDrawing schema unit tests", () => {
         beams: [],
         slabs: [],
         walls: [],
+        gridLines: [
+          {
+            label: "A",
+            direction: "HORIZONTAL",
+          },
+        ],
       },
       openings: {
         doors: [],
@@ -43,7 +49,7 @@ describe("validateParsedDrawing schema unit tests", () => {
       schemaVersion: "2.0",
       metadata: {},
       rooms: [],
-      structural: { foundations: [], columns: [], beams: [], slabs: [], walls: [] },
+      structural: { foundations: [], columns: [], beams: [], slabs: [], walls: [], gridLines: [] },
       openings: { doors: [], windows: [] },
       fixtures: [],
       annotations: [],
@@ -73,7 +79,7 @@ describe("validateParsedDrawing schema unit tests", () => {
       schemaVersion: "1.0",
       metadata: {},
       rooms: [],
-      structural: { foundations: [], columns: [], beams: [], slabs: [], walls: [] },
+      structural: { foundations: [], columns: [], beams: [], slabs: [], walls: [], gridLines: [] },
       openings: { doors: [], windows: [] },
       fixtures: [],
       annotations: [],
@@ -81,5 +87,65 @@ describe("validateParsedDrawing schema unit tests", () => {
       notes: [123],
     };
     expect(() => validateParsedDrawing(invalidData)).toThrow("notes elements must be strings");
+  });
+
+  it("should fail validation if structural.gridLines is missing", () => {
+    const invalidData = {
+      schemaVersion: "1.0",
+      metadata: {},
+      rooms: [],
+      structural: { foundations: [], columns: [], beams: [], slabs: [], walls: [] },
+      openings: { doors: [], windows: [] },
+      fixtures: [],
+      annotations: [],
+      schedules: [],
+      notes: [],
+    };
+    expect(() => validateParsedDrawing(invalidData)).toThrow("structural.gridLines must be an array");
+  });
+
+  it("should fail validation if structural.gridLines elements are not objects", () => {
+    const invalidData = {
+      schemaVersion: "1.0",
+      metadata: {},
+      rooms: [],
+      structural: { foundations: [], columns: [], beams: [], slabs: [], walls: [], gridLines: ["invalid"] as any },
+      openings: { doors: [], windows: [] },
+      fixtures: [],
+      annotations: [],
+      schedules: [],
+      notes: [],
+    };
+    expect(() => validateParsedDrawing(invalidData)).toThrow("structural.gridLines elements must be objects");
+  });
+
+  it("should fail validation if structural.gridLines element is missing label", () => {
+    const invalidData = {
+      schemaVersion: "1.0",
+      metadata: {},
+      rooms: [],
+      structural: { foundations: [], columns: [], beams: [], slabs: [], walls: [], gridLines: [{ direction: "HORIZONTAL" }] as any },
+      openings: { doors: [], windows: [] },
+      fixtures: [],
+      annotations: [],
+      schedules: [],
+      notes: [],
+    };
+    expect(() => validateParsedDrawing(invalidData)).toThrow("structural.gridLines[].label must be a string");
+  });
+
+  it("should fail validation if structural.gridLines element is missing direction", () => {
+    const invalidData = {
+      schemaVersion: "1.0",
+      metadata: {},
+      rooms: [],
+      structural: { foundations: [], columns: [], beams: [], slabs: [], walls: [], gridLines: [{ label: "A" }] as any },
+      openings: { doors: [], windows: [] },
+      fixtures: [],
+      annotations: [],
+      schedules: [],
+      notes: [],
+    };
+    expect(() => validateParsedDrawing(invalidData)).toThrow("structural.gridLines[].direction must be a string");
   });
 });

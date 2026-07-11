@@ -20,22 +20,30 @@ CRITICAL: Do NOT skip any door arc symbol you can see. If unsure whether somethi
 
 Return valid raw JSON only (no markdown fences):
 
+Allowed values & types:
+- door type: must be one of "single", "double", "sliding", "bi-fold", or "unknown"
+- door width: string or null
+- door room: string or null
+- window width: string or null
+- window height: string or null
+
+Example JSON structure:
 {
   "doors": [
     {
       "id": "D1",
-      "type": "single" | "double" | "sliding" | "bi-fold" | "unknown",
-      "width": string | null,
-      "location": string,
-      "room": string | null
+      "type": "single",
+      "width": "3'-0\"",
+      "location": "North wall",
+      "room": "Bedroom 1"
     }
   ],
   "windows": [
     {
       "id": "W1",
-      "width": string | null,
-      "height": string | null,
-      "location": string
+      "width": "4'-0\"",
+      "height": "5'-0\"",
+      "location": "East wall"
     }
   ]
 }

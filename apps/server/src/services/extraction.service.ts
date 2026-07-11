@@ -102,9 +102,10 @@ export class ExtractionService {
         beams: details.structural?.beams ?? [],
         slabs: details.structural?.slabs ?? [],
         foundations: details.structural?.foundations ?? [],
-        gridLines: details.structural?.gridLines ?? [],
+        gridLines: Array.isArray(details.structural?.gridLines)
+          ? details.structural.gridLines
+          : [],
       },
-
       openings: {
         doors: Array.isArray(openings.doors) ? openings.doors : [],
         windows: Array.isArray(openings.windows) ? openings.windows : [],

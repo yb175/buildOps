@@ -10,7 +10,7 @@ describe("JSONAgentService unit tests", () => {
     schemaVersion: "1.0",
     metadata: { drawingNumber: "A-102", title: null, project: null, revision: null, scale: null, date: null },
     rooms: [],
-    structural: { foundations: [], columns: [], beams: [], slabs: [], walls: [] },
+    structural: { foundations: [], columns: [], beams: [], slabs: [], walls: [], gridLines: [] },
     openings: { doors: [], windows: [] },
     fixtures: [],
     annotations: [],

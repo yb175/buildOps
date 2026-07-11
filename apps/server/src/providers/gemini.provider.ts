@@ -253,7 +253,7 @@ export class GeminiProvider {
           areaSquareFeet: 240,
         },
       ],
-      structural: { foundations: [], columns: [], beams: [], slabs: [], walls: [] },
+      structural: { foundations: [], columns: [], beams: [], slabs: [], walls: [], gridLines: [] },
       openings: { doors: [], windows: [] },
       fixtures: [],
       annotations: [],

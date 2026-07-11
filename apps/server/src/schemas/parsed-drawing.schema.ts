@@ -45,15 +45,18 @@ export function validateParsedDrawing(data: any): ParsedDrawing {
       }
     }
   }
-
-  if (data.structural.gridLines !== undefined) {
-    if (!Array.isArray(data.structural.gridLines)) {
-      throw new Error("structural.gridLines must be an array");
+  if (!Array.isArray(data.structural.gridLines)) {
+    throw new Error("structural.gridLines must be an array");
+  }
+  for (const el of data.structural.gridLines) {
+    if (el === null || typeof el !== "object") {
+      throw new Error("structural.gridLines elements must be objects");
     }
-    for (const el of data.structural.gridLines) {
-      if (el === null || typeof el !== "object") {
-        throw new Error("structural.gridLines elements must be objects");
-      }
+    if (typeof el.label !== "string") {
+      throw new Error("structural.gridLines[].label must be a string");
+    }
+    if (typeof el.direction !== "string") {
+      throw new Error("structural.gridLines[].direction must be a string");
     }
   }
 
