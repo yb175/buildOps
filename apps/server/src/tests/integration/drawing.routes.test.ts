@@ -92,6 +92,18 @@ describe("drawing.routes integration test", () => {
     expect(response.body.error).toContain("Only PDF is allowed");
   });
 
+  it("should return 415 if the file is labeled application/pdf but lacks %PDF signature", async () => {
+    const fakePdfBuffer = Buffer.from("this is a text file masquerading as a pdf");
+
+    const response = await request(app)
+      .post("/drawings")
+      .field("discipline", "STRUCTURAL")
+      .attach("file", fakePdfBuffer, "fake.pdf");
+
+    expect(response.status).toBe(415);
+    expect(response.body.error).toContain("Invalid PDF file signature");
+  });
+
   it("should return 400 if the file is missing", async () => {
     const response = await request(app)
       .post("/drawings")

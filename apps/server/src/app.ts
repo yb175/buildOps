@@ -1,12 +1,8 @@
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
-import dotenv from "dotenv";
 import { HealthResponse } from "@buildops/shared";
 import { prisma } from "./config/prisma";
-
-// Load environment variables
-dotenv.config();
 
 const app = express();
 
