@@ -3,6 +3,7 @@ import { ConflictRepository } from "../repositories/conflict.repository";
 import { DrawingRepository } from "../repositories/drawing.repository";
 import { GeminiProvider, GEMINI_FLASH_LITE_MODEL } from "../providers/gemini.provider";
 import { NotFoundError } from "../errors/not-found.error";
+import { Conflict } from "../models/conflict.types";
 import {
   computeConflictsHash,
   createRfiSkeleton,
@@ -63,7 +64,7 @@ export class RfiService {
     }
 
     // 1. Fetch current conflicts for the drawing
-    const conflicts = await this.conflictRepository.findByDrawingId(drawingId);
+    const conflicts = await this.conflictRepository.findByDrawingId(drawingId) as unknown as Conflict[];
     if (conflicts.length === 0) {
       // No conflicts = no RFIs. Clean up and return empty array.
       await this.rfiRepository.saveRfis(drawingId, [], "");
@@ -75,7 +76,7 @@ export class RfiService {
 
     // 3. Caching: check if conflict hash is unchanged
     const cached = await this.rfiRepository.findByDrawingId(drawingId);
-    if (cached.length > 0 && cached[0].conflictHash === hash) {
+    if (cached.length > 0 && (cached[0] as any).conflictHash === hash) {
       console.log(`[RfiService] Cache hit for drawing ${drawingId}. Returning cached RFIs.`);
       return cached;
     }
@@ -87,18 +88,26 @@ export class RfiService {
     }));
 
     let refinements: GeminiRfiRefinement[] = [];
+    const BATCH_SIZE = 10;
     try {
-      // 5. Build prompt and call Gemini 2.5 Flash
-      const prompt = buildRfiPrompt(
-        drawing.fileName || "Unknown",
-        drawing.discipline || "UNKNOWN",
-        conflicts as any
-      );
+      // 5. Process conflicts in batches and build prompts for Gemini
+      for (let i = 0; i < conflicts.length; i += BATCH_SIZE) {
+        const batch = conflicts.slice(i, i + BATCH_SIZE);
+        const prompt = buildRfiPrompt(
+          drawing.fileName || "Unknown",
+          drawing.discipline || "UNKNOWN",
+          batch as any
+        );
 
-      refinements = await this.geminiProvider.generateJson<GeminiRfiRefinement[]>(prompt);
+        const batchRefinements = await this.geminiProvider.generateJson<any>(prompt);
+        if (!Array.isArray(batchRefinements)) {
+          console.warn(`[RfiService] Gemini response for batch ${i} is not an array. Using fallback.`);
+          continue;
+        }
+        refinements.push(...(batchRefinements as GeminiRfiRefinement[]));
+      }
     } catch (err) {
-      console.warn("[RfiService] Gemini call failed. Falling back to default structured RFIs.", err);
-      // refinements will be empty, which triggers fallback refinement for each conflict
+      console.warn("[RfiService] Gemini call failed during batch processing. Falling back for some conflicts.", err);
     }
 
     // 6. Merge refinements or use defaults as fallback

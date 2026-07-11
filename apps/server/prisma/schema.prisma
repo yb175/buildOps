@@ -92,6 +92,7 @@ model Rfi {
   title          String           @db.VarChar
   priority       String           @db.VarChar
   discipline     String           @db.VarChar
+  subject        String           @db.VarChar
   description    String           @db.Text
   question       String           @db.Text
   recommendation String           @db.Text
@@ -102,5 +103,6 @@ model Rfi {
   drawing        Drawing          @relation(fields: [drawingId], references: [id], onDelete: Cascade)
   conflict       Conflict         @relation(fields: [conflictId], references: [id], onDelete: Cascade)
 
+  @@index([drawingId])
   @@map("rfis")
 }

@@ -1,24 +1,23 @@
 import crypto from "crypto";
 import { randomUUID } from "crypto";
-import { Conflict as DBConflict } from "@prisma/client";
-import { Conflict as CoreConflict } from "../models/conflict.types";
+import { Conflict } from "../models/conflict.types";
 import { DraftRFI, GeminiRfiRefinement } from "../models/rfi.types";
 
 /**
  * Computes a SHA-256 hash deterministically based on conflict content.
  */
-export function computeConflictsHash(conflicts: (DBConflict | CoreConflict)[]): string {
+export function computeConflictsHash(conflicts: Conflict[]): string {
   if (conflicts.length === 0) return "";
 
   // Sort conflicts by content-based key to ensure determinism
   const sorted = [...conflicts].sort((a, b) => {
-    const keyA = `${a.category}|${a.severity}|${a.title}|${a.entityA}|${a.entityB || ""}`;
-    const keyB = `${b.category}|${b.severity}|${b.title}|${b.entityA}|${b.entityB || ""}`;
+    const keyA = `${a.category}|${a.severity}|${a.title}|${a.entityA}|${a.entityB || ""}|${a.description}|${a.recommendation || ""}`;
+    const keyB = `${b.category}|${b.severity}|${b.title}|${b.entityA}|${b.entityB || ""}|${b.description}|${b.recommendation || ""}`;
     return keyA.localeCompare(keyB);
   });
 
   const hashInput = sorted
-    .map((c) => `${c.category}|${c.severity}|${c.title}|${c.entityA}|${c.entityB || ""}`)
+    .map((c) => `${c.category}|${c.severity}|${c.title}|${c.entityA}|${c.entityB || ""}|${c.description}|${c.recommendation || ""}`)
     .join("\n");
 
   return crypto.createHash("sha256").update(hashInput).digest("hex");
@@ -46,7 +45,7 @@ export function mapSeverityToPriority(severity: string): "LOW" | "MEDIUM" | "HIG
  * Generates an RFI skeleton for a conflict, populated with deterministic fields.
  */
 export function createRfiSkeleton(
-  conflict: DBConflict | CoreConflict,
+  conflict: Conflict,
   discipline: string
 ): Omit<DraftRFI, "description" | "question" | "recommendation"> {
   const entityBStr = conflict.entityB ? ` and ${conflict.entityB}` : "";
@@ -65,7 +64,7 @@ export function createRfiSkeleton(
 /**
  * Generates fallback refinement values for a conflict in case Gemini fails.
  */
-export function generateFallbackRefinement(conflict: DBConflict | CoreConflict): GeminiRfiRefinement {
+export function generateFallbackRefinement(conflict: Conflict): GeminiRfiRefinement {
   const entityBStr = conflict.entityB ? ` and ${conflict.entityB}` : "";
   return {
     conflictId: conflict.id,
@@ -81,7 +80,7 @@ export function generateFallbackRefinement(conflict: DBConflict | CoreConflict):
 export function mergeRfiRefinements(
   skeletons: { skeleton: Omit<DraftRFI, "description" | "question" | "recommendation">; conflictId: string }[],
   refinements: GeminiRfiRefinement[],
-  conflicts: (DBConflict | CoreConflict)[]
+  conflicts: Conflict[]
 ): DraftRFI[] {
   const refinementsMap = new Map<string, GeminiRfiRefinement>();
   for (const ref of refinements) {

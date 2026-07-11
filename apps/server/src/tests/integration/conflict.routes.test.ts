@@ -9,11 +9,7 @@ describe("conflict.routes integration test", () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
 
-    // Clean up drawing/conflict database records
-    await prisma.conflict.deleteMany({});
-    await prisma.drawing.deleteMany({});
-
-    // Seed a drawing record in PostgreSQL with parsedJson mock
+    // Seed a drawing record in PostgreSQL
     const drawing = await prisma.drawing.create({
       data: {
         hash: `test-hash-conflict-${Date.now()}`,
@@ -57,8 +53,10 @@ describe("conflict.routes integration test", () => {
 
   afterEach(async () => {
     try {
-      await prisma.conflict.deleteMany({});
-      await prisma.drawing.deleteMany({});
+      if (createdDrawingId) {
+        await prisma.conflict.deleteMany({ where: { drawingId: createdDrawingId } });
+        await prisma.drawing.delete({ where: { id: createdDrawingId } });
+      }
     } catch (e) {
       // Ignore
     }

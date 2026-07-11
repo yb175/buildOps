@@ -32,7 +32,9 @@ describe("analysis.routes integration test", () => {
   afterEach(async () => {
     // Clean up drawing records
     try {
-      await prisma.drawing.deleteMany({});
+      if (createdDrawingId) {
+        await prisma.drawing.delete({ where: { id: createdDrawingId } });
+      }
     } catch (e) {
       // Ignore cleanup error if already deleted
     }

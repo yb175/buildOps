@@ -15,9 +15,6 @@ export class RfiController {
   generateRfis = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      if (!id) {
-        return res.status(400).json({ error: "Missing drawing ID" });
-      }
 
       const rfis = await this.rfiService.generateAndPersistRfis(id);
       return res.status(200).json({
@@ -38,9 +35,6 @@ export class RfiController {
   getRfis = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      if (!id) {
-        return res.status(400).json({ error: "Missing drawing ID" });
-      }
 
       const rfis = await this.rfiService.getRfisForDrawing(id);
       return res.status(200).json({

@@ -12,11 +12,6 @@ describe("rfi.routes integration test", () => {
     vi.restoreAllMocks();
     vi.stubEnv("GEMINI_API_KEY", "mock-gemini-key");
 
-    // Clean up existing records
-    await prisma.rfi.deleteMany({});
-    await prisma.conflict.deleteMany({});
-    await prisma.drawing.deleteMany({});
-
     // 1. Seed a drawing record
     const drawing = await prisma.drawing.create({
       data: {
@@ -63,9 +58,11 @@ describe("rfi.routes integration test", () => {
 
   afterEach(async () => {
     try {
-      await prisma.rfi.deleteMany({});
-      await prisma.conflict.deleteMany({});
-      await prisma.drawing.deleteMany({});
+      if (createdDrawingId) {
+        await prisma.rfi.deleteMany({ where: { drawingId: createdDrawingId } });
+        await prisma.conflict.deleteMany({ where: { drawingId: createdDrawingId } });
+        await prisma.drawing.delete({ where: { id: createdDrawingId } });
+      }
     } catch (e) {
       // Ignore cleanup error if already deleted
     }
@@ -94,7 +91,7 @@ describe("rfi.routes integration test", () => {
       where: { drawingId: createdDrawingId },
     });
     expect(dbRfis).toHaveLength(1);
-    expect(dbRfis[0].conflictHash).toBeDefined();
+    expect((dbRfis[0] as any).conflictHash).toBeDefined();
   });
 
   it("should retrieve cached RFIs on GET", async () => {

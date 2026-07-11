@@ -9,6 +9,7 @@
   - Added the required column `priority` to the `rfis` table without a default value. This is not possible if the table is not empty.
   - Added the required column `question` to the `rfis` table without a default value. This is not possible if the table is not empty.
   - Added the required column `recommendation` to the `rfis` table without a default value. This is not possible if the table is not empty.
+  - Added the required column `subject` to the `rfis` table without a default value. This is not possible if the table is not empty.
   - Made the column `title` on table `rfis` required. This step will fail if there are existing NULL values in that column.
   - Added the required column `status` to the `rfis` table without a default value. This is not possible if the table is not empty.
 
@@ -22,9 +23,13 @@ ADD COLUMN     "drawing_id" UUID NOT NULL,
 ADD COLUMN     "priority" VARCHAR NOT NULL,
 ADD COLUMN     "question" TEXT NOT NULL,
 ADD COLUMN     "recommendation" TEXT NOT NULL,
+ADD COLUMN     "subject" VARCHAR NOT NULL,
 ALTER COLUMN "title" SET NOT NULL,
 DROP COLUMN "status",
 ADD COLUMN     "status" VARCHAR NOT NULL;
+
+-- CreateIndex
+CREATE INDEX "rfis_drawing_id_idx" ON "rfis"("drawing_id");
 
 -- AddForeignKey
 ALTER TABLE "rfis" ADD CONSTRAINT "rfis_drawing_id_fkey" FOREIGN KEY ("drawing_id") REFERENCES "drawings"("id") ON DELETE CASCADE ON UPDATE CASCADE;
