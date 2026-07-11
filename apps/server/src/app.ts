@@ -2,14 +2,13 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import dotenv from "dotenv";
-import { PrismaClient } from "@prisma/client";
 import { HealthResponse } from "@buildops/shared";
+import { prisma } from "./config/prisma";
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
-const prisma = new PrismaClient();
 
 // Configure middleware
 app.use(cors());
@@ -75,5 +74,14 @@ app.get("/entries", async (_req, res) => {
     res.status(500).json({ error: "Database error" });
   }
 });
+
+import drawingRoutes from "./routes/drawing.routes";
+import { errorHandler } from "./middleware/error.middleware";
+
+// Mount API routes
+app.use("/drawings", drawingRoutes);
+
+// Register global error handler middleware
+app.use(errorHandler);
 
 export { app, prisma };
