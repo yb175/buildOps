@@ -49,6 +49,7 @@ model Drawing {
   createdAt                DateTime       @default(now()) @map("created_at") @db.Timestamp
 
   conflicts  Conflict[]
+  rfis       Rfi[]
 
   @@map("drawings")
 }
@@ -85,14 +86,21 @@ model Conflict {
 }
 
 model Rfi {
-  id         String     @id @default(uuid()) @db.Uuid
-  conflictId String     @map("conflict_id") @db.Uuid
-  title      String?    @db.VarChar
-  draft      String?    @db.Text
-  status     RfiStatus?
-  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamp
+  id             String           @id @default(uuid()) @db.Uuid
+  drawingId      String           @map("drawing_id") @db.Uuid
+  conflictId     String           @map("conflict_id") @db.Uuid
+  title          String           @db.VarChar
+  priority       String           @db.VarChar
+  discipline     String           @db.VarChar
+  description    String           @db.Text
+  question       String           @db.Text
+  recommendation String           @db.Text
+  status         String           @db.VarChar
+  conflictHash   String           @map("conflict_hash") @db.VarChar(64)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamp
 
-  conflict   Conflict   @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  drawing        Drawing          @relation(fields: [drawingId], references: [id], onDelete: Cascade)
+  conflict       Conflict         @relation(fields: [conflictId], references: [id], onDelete: Cascade)
 
   @@map("rfis")
 }

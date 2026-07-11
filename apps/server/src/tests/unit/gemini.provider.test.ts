@@ -35,7 +35,7 @@ describe("GeminiProvider unit tests", () => {
     expect(result).toEqual(mockJson);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(fetchSpy).toHaveBeenCalledWith(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
       expect.objectContaining({
         method: "POST",
         headers: {

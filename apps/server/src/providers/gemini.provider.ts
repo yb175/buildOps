@@ -8,10 +8,13 @@ export const geminiConfig = {
 };
 
 /** Model alias used for fast, cheap classification tasks. */
-export const GEMINI_FLASH_MODEL = process.env.GEMINI_FLASH_MODEL || "gemini-flash-latest";
+export const GEMINI_FLASH_MODEL = process.env.GEMINI_FLASH_MODEL || "gemini-3.1-flash-lite";
 
-/** Model alias used for high-accuracy extraction agents (defaulting to cheap flash). */
-export const GEMINI_PRO_MODEL = process.env.GEMINI_PRO_MODEL || "gemini-flash-latest";
+/** Model alias used for high-accuracy extraction agents. */
+export const GEMINI_PRO_MODEL = process.env.GEMINI_PRO_MODEL || "gemini-3.1-flash-lite";
+
+/** Model alias used for cost-efficient text-only tasks like RFI generation. */
+export const GEMINI_FLASH_LITE_MODEL = process.env.GEMINI_FLASH_LITE_MODEL || "gemini-3.1-flash-lite";
 
 export class GeminiProvider {
   private baseUrl: string;
@@ -84,7 +87,7 @@ export class GeminiProvider {
       for (let attempt = 1; attempt <= retries; attempt++) {
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 60000);
+          const timeoutId = setTimeout(() => controller.abort(), 120000);
 
           let response: Response;
           try {
@@ -230,6 +233,31 @@ export class GeminiProvider {
         documentType: "ARCHITECTURAL_DRAWING",
         reason: "Detected architectural drawing showing floor plan details.",
       };
+    }
+
+    // 1.5. RFI generation prompts
+    if (prompt.includes("coordinator") || prompt.includes("GeminiRfiRefinement") || prompt.includes("RFI")) {
+      const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+      const matches = prompt.match(uuidRegex) || [];
+      const uniqueIds = Array.from(new Set(matches));
+
+      if (uniqueIds.length === 0) {
+        return [
+          {
+            conflictId: "mock-conflict-id",
+            description: "Mock RFI Description: During design review, a conflict was identified between architectural door assembly and structural elements.",
+            question: "Confirm layout adjustments required to clear the door opening.",
+            recommendation: "Shift the door or structural element as needed to resolve clearance issues."
+          }
+        ];
+      }
+
+      return uniqueIds.map((id) => ({
+        conflictId: id,
+        description: `Mock RFI Description for conflict ${id}: During structural review, door layout was found to intersect structural framing, preventing proper installation.`,
+        question: `Confirm correct coordinates for door assembly to clear structural framing for conflict ${id}.`,
+        recommendation: `Shift architectural door assembly location slightly to clear the structural element, subject to final design coordination.`
+      }));
     }
 
     // 2. Normalization / extraction agent prompts
