@@ -1,3 +1,4 @@
+// DrawingRepository handles persistence operations for construction drawings.
 import { prisma } from "../config/prisma";
 import { Drawing, Discipline } from "@prisma/client";
 
@@ -24,6 +25,19 @@ export class DrawingRepository {
         discipline: data.discipline,
         status: "UPLOADED",
       },
+    });
+  }
+
+  async findById(id: string): Promise<Drawing | null> {
+    return prisma.drawing.findUnique({
+      where: { id },
+    });
+  }
+
+  async updateOcrOutput(id: string, ocrOutput: string): Promise<Drawing> {
+    return prisma.drawing.update({
+      where: { id },
+      data: { ocrOutput },
     });
   }
 }
