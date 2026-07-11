@@ -26,12 +26,12 @@ export class ElectricalRule implements ConflictRule {
     });
 
     for (const panel of electricalFixtures) {
-      const panelBBox = parseBBox(panel.bbox || panel.geometry);
+      const panelBBox = parseBBox(panel.bbox) || parseBBox(panel.geometry);
       if (!panelBBox) continue;
 
       // Check if electrical panel is blocked by a door swing
       for (const door of doors) {
-        const doorBBox = parseBBox(door.bbox || door.geometry);
+        const doorBBox = parseBBox(door.bbox) || parseBBox(door.geometry);
         if (doorBBox && intersects(panelBBox, doorBBox)) {
           conflicts.push({
             id: randomUUID(),

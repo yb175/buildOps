@@ -91,14 +91,14 @@ export class PipelineService {
       // 6. Multi-agent Normalization & Validation Stage
       const parsedDrawing = await this.jsonAgentService.normalize(extractionInput, classification.documentType, mimeType);
 
-      // 6. Persist Parsed JSON and update status to PARSED
+      // 6. Persist Parsed JSON and update status to PARSING
       logger.log(`[PipelineService] Persist Parsed JSON for drawingId: ${drawingId}`);
       await this.drawingRepository.updateParsedJson(
         drawingId,
         parsedDrawing,
         classification.documentType,
         classification.confidence,
-        "PARSED"
+        "PARSING"
       );
 
       // 7. Auto-detect and persist conflicts
@@ -108,8 +108,11 @@ export class PipelineService {
         logger.log(`[PipelineService] Successfully detected and persisted conflicts for drawingId: ${drawingId}`);
       } catch (conflictError) {
         logger.error(`[PipelineService] Error during auto-detecting conflicts for drawingId: ${drawingId}`, conflictError);
-        // Do not fail main pipeline if conflict detection fails
+        throw conflictError;
       }
+
+      // 8. Update status to PARSED now that everything is done
+      await this.drawingRepository.updateStatus(drawingId, "PARSED");
 
       logger.log(`[PipelineService] Analysis pipeline completed successfully for drawingId: ${drawingId}`);
       return { parsedJson: parsedDrawing };

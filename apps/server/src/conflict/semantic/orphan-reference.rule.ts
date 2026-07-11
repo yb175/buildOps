@@ -11,8 +11,8 @@ export class OrphanReferenceRule implements ConflictRule {
     const annotations = drawing.annotations || [];
 
     // Collect existing entity identifiers
-    const doorIds = new Set((drawing.openings?.doors || []).map((d: any) => String(d.id).trim().toLowerCase()));
-    const windowIds = new Set((drawing.openings?.windows || []).map((w: any) => String(w.id).trim().toLowerCase()));
+    const doorIds = new Set((drawing.openings?.doors || []).map((d: any) => String(d.id).replace(/[- ]/g, "").toLowerCase()));
+    const windowIds = new Set((drawing.openings?.windows || []).map((w: any) => String(w.id).replace(/[- ]/g, "").toLowerCase()));
 
     // Helper to check standard labels
     const checkText = (text: string, source: string) => {

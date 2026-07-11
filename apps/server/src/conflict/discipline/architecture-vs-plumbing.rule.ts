@@ -34,6 +34,7 @@ export class ArchitectureVsPlumbingRule implements ConflictRule {
 
     for (const arch of architecturalDrawings) {
       for (const plumb of plumbingDrawings) {
+        if (arch.id !== targetId && plumb.id !== targetId) continue;
         const archPlumbFixtures = (arch.drawing.fixtures || []).filter(
           (f: any) => f.type === "PLUMBING" || String(f.name).toLowerCase().includes("sink") || String(f.name).toLowerCase().includes("toilet")
         );
@@ -54,8 +55,8 @@ export class ArchitectureVsPlumbingRule implements ConflictRule {
               archNameLower.includes(plumbNameLower)
             ) {
               // Check coordinate alignment if bboxes exist
-              const archBBox = parseBBox(archFix.bbox || archFix.geometry);
-              const plumbBBox = parseBBox(plumbFix.bbox || plumbFix.geometry);
+              const archBBox = parseBBox(archFix.bbox) || parseBBox(archFix.geometry);
+              const plumbBBox = parseBBox(plumbFix.bbox) || parseBBox(plumbFix.geometry);
               if (archBBox && plumbBBox) {
                 if (intersects(archBBox, plumbBBox)) {
                   matchFound = true;

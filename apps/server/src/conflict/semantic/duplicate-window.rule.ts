@@ -13,7 +13,7 @@ export class DuplicateWindowRule implements ConflictRule {
 
     for (const window of windows) {
       if (!window.id) continue;
-      const normalizedId = window.id.trim().toLowerCase();
+      const normalizedId = String(window.id).trim().toLowerCase();
 
       // Check duplicate ID
       if (idsSeen.has(normalizedId)) {

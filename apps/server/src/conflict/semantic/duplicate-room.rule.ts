@@ -13,25 +13,26 @@ export class DuplicateRoomRule implements ConflictRule {
     const numbersSeen = new Map<string, any>();
 
     for (const room of rooms) {
-      if (!room.name) continue;
-      const normalizedName = room.name.trim().toLowerCase();
+      const normalizedName = room.name ? String(room.name).trim().toLowerCase() : "";
       const normalizedNumber = room.number ? String(room.number).trim().toLowerCase() : "";
 
       // Check name duplicates
-      if (namesSeen.has(normalizedName)) {
-        const firstRoom = namesSeen.get(normalizedName);
-        conflicts.push({
-          id: randomUUID(),
-          category: this.category,
-          severity: "MEDIUM",
-          title: "Duplicate Room Name Detected",
-          description: `Multiple rooms are named "${room.name}". This can cause confusion in schedules and construction layouts.`,
-          entityA: `Room [ID: ${firstRoom.id || "N/A"}, Name: ${firstRoom.name}]`,
-          entityB: `Room [ID: ${room.id || "N/A"}, Name: ${room.name}]`,
-          recommendation: "Ensure each room has a unique name or number designation (e.g. Office 101, Office 102).",
-        });
-      } else {
-        namesSeen.set(normalizedName, room);
+      if (normalizedName) {
+        if (namesSeen.has(normalizedName)) {
+          const firstRoom = namesSeen.get(normalizedName);
+          conflicts.push({
+            id: randomUUID(),
+            category: this.category,
+            severity: "MEDIUM",
+            title: "Duplicate Room Name Detected",
+            description: `Multiple rooms are named "${room.name}". This can cause confusion in schedules and construction layouts.`,
+            entityA: `Room [ID: ${firstRoom.id || "N/A"}, Name: ${firstRoom.name}]`,
+            entityB: `Room [ID: ${room.id || "N/A"}, Name: ${room.name}]`,
+            recommendation: "Ensure each room has a unique name or number designation (e.g. Office 101, Office 102).",
+          });
+        } else {
+          namesSeen.set(normalizedName, room);
+        }
       }
 
       // Check number duplicates

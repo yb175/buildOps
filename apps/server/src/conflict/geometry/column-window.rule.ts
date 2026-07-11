@@ -2,8 +2,8 @@ import { ConflictRule, Conflict } from "../../models/conflict.types";
 import { parseBBox, intersects } from "../geometry/bbox.util";
 import { randomUUID } from "crypto";
 
-export class WallWindowRule implements ConflictRule {
-  name = "Wall Window Geometry Rule";
+export class ColumnWindowRule implements ConflictRule {
+  name = "Column Window Geometry Rule";
   category = "GEOMETRY" as const;
 
   execute(context: any): Conflict[] {

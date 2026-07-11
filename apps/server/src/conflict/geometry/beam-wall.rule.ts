@@ -13,11 +13,11 @@ export class BeamWallRule implements ConflictRule {
     const walls = drawing.structural?.walls || [];
 
     for (const beam of beams) {
-      const beamBBox = parseBBox(beam.bbox || beam.geometry);
+      const beamBBox = parseBBox(beam.bbox) || parseBBox(beam.geometry);
       if (!beamBBox) continue;
 
       for (const wall of walls) {
-        const wallBBox = parseBBox(wall.bbox || wall.geometry);
+        const wallBBox = parseBBox(wall.bbox) || parseBBox(wall.geometry);
         if (!wallBBox) continue;
 
         // If a beam intersects a PARTITION wall, it might be a layout clash or need header verification

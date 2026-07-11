@@ -1,5 +1,5 @@
 import { prisma } from "../config/prisma";
-import { Conflict as DBConflict } from "@prisma/client";
+import { Conflict as DBConflict, Prisma } from "@prisma/client";
 import { Conflict as CoreConflict } from "../models/conflict.types";
 
 export class ConflictRepository {
@@ -45,6 +45,8 @@ export class ConflictRepository {
       return tx.conflict.findMany({
         where: { drawingId },
       });
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable
     });
   }
 }

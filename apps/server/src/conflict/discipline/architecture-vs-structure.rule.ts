@@ -36,17 +36,18 @@ export class ArchitectureVsStructureRule implements ConflictRule {
     // Run comparison if we have at least one of each
     for (const arch of architecturalDrawings) {
       for (const struct of structuralDrawings) {
+        if (arch.id !== targetId && struct.id !== targetId) continue;
         const archDoors = arch.drawing.openings?.doors || [];
         const archWindows = arch.drawing.openings?.windows || [];
         const structColumns = struct.drawing.structural?.columns || [];
 
         // Check door clashing with structural columns
         for (const door of archDoors) {
-          const doorBBox = parseBBox(door.bbox || door.geometry);
+          const doorBBox = parseBBox(door.bbox) || parseBBox(door.geometry);
           if (!doorBBox) continue;
 
           for (const col of structColumns) {
-            const colBBox = parseBBox(col.bbox || col.geometry);
+            const colBBox = parseBBox(col.bbox) || parseBBox(col.geometry);
             if (colBBox && intersects(doorBBox, colBBox)) {
               conflicts.push({
                 id: randomUUID(),
@@ -64,11 +65,11 @@ export class ArchitectureVsStructureRule implements ConflictRule {
 
         // Check window clashing with structural columns
         for (const win of archWindows) {
-          const winBBox = parseBBox(win.bbox || win.geometry);
+          const winBBox = parseBBox(win.bbox) || parseBBox(win.geometry);
           if (!winBBox) continue;
 
           for (const col of structColumns) {
-            const colBBox = parseBBox(col.bbox || col.geometry);
+            const colBBox = parseBBox(col.bbox) || parseBBox(col.geometry);
             if (colBBox && intersects(winBBox, colBBox)) {
               conflicts.push({
                 id: randomUUID(),

@@ -92,7 +92,7 @@ model Rfi {
   status     RfiStatus?
   createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamp
 
-  conflict   Conflict   @relation(fields: [conflictId], references: [id])
+  conflict   Conflict   @relation(fields: [conflictId], references: [id], onDelete: Cascade)
 
   @@map("rfis")
 }

@@ -24,7 +24,9 @@ export class HvacRule implements ConflictRule {
         name.includes("diffuser") ||
         name.includes("exhaust fan") ||
         type.includes("hvac") ||
-        type.includes("mep")
+        type.includes("duct") ||
+        type.includes("diffuser") ||
+        type.includes("vav")
       );
     });
 

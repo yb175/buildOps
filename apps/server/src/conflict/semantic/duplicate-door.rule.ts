@@ -14,8 +14,8 @@ export class DuplicateDoorRule implements ConflictRule {
 
     for (const door of doors) {
       if (!door.id) continue;
-      const normalizedId = door.id.trim().toLowerCase();
-      const normalizedLoc = door.location ? door.location.trim().toLowerCase() : "";
+      const normalizedId = String(door.id).trim().toLowerCase();
+      const normalizedLoc = door.location ? String(door.location).trim().toLowerCase() : "";
 
       // Check duplicate ID
       if (idsSeen.has(normalizedId)) {

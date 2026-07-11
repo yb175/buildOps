@@ -10,20 +10,22 @@ export class StructuralRule implements ConflictRule {
     const drawing = context.drawing;
 
     // Check for completely empty drawing
-    const roomCount = (drawing.rooms || []).length;
-    const doorCount = (drawing.openings?.doors || []).length;
-    const windowCount = (drawing.openings?.windows || []).length;
-    const fixtureCount = (drawing.fixtures || []).length;
-    const annotationCount = (drawing.annotations || []).length;
-    const noteCount = (drawing.notes || []).length;
+    const count = (arr: any) => Array.isArray(arr) ? arr.length : 0;
+    const roomCount = count(drawing.rooms);
+    const doorCount = count(drawing.openings?.doors);
+    const windowCount = count(drawing.openings?.windows);
+    const fixtureCount = count(drawing.fixtures);
+    const annotationCount = count(drawing.annotations);
+    const noteCount = count(drawing.notes);
+    const scheduleCount = count(drawing.schedules);
 
     const structural = drawing.structural || {};
-    const foundationCount = (structural.foundations || []).length;
-    const columnCount = (structural.columns || []).length;
-    const beamCount = (structural.beams || []).length;
-    const slabCount = (structural.slabs || []).length;
-    const wallCount = (structural.walls || []).length;
-    const gridLineCount = (structural.gridLines || []).length;
+    const foundationCount = count(structural.foundations);
+    const columnCount = count(structural.columns);
+    const beamCount = count(structural.beams);
+    const slabCount = count(structural.slabs);
+    const wallCount = count(structural.walls);
+    const gridLineCount = count(structural.gridLines);
 
     const totalStructuralCount =
       foundationCount + columnCount + beamCount + slabCount + wallCount + gridLineCount;
@@ -35,6 +37,7 @@ export class StructuralRule implements ConflictRule {
       fixtureCount +
       annotationCount +
       noteCount +
+      scheduleCount +
       totalStructuralCount;
 
     if (totalEntities === 0) {
@@ -52,15 +55,19 @@ export class StructuralRule implements ConflictRule {
 
     // Check for missing structural elements entirely
     if (totalStructuralCount === 0) {
-      conflicts.push({
-        id: randomUUID(),
-        category: this.category,
-        severity: "MEDIUM",
-        title: "Missing Structural Elements",
-        description: "No structural components (columns, beams, slabs, foundations, walls, or grid lines) were found in this drawing. This is normal for architectural schematics but critical for structural details.",
-        entityA: "Structural Block",
-        recommendation: "Ensure that if this is a structural or concrete reinforcement drawing, columns, beams, slabs, and gridlines are fully modeled.",
-      });
+      const currentInfo = context.allDrawings?.find((d: any) => d.id === context.drawingId);
+      const discipline = currentInfo?.discipline;
+      if (discipline === "STRUCTURAL" || discipline === "ARCHITECTURAL" || !discipline) {
+        conflicts.push({
+          id: randomUUID(),
+          category: this.category,
+          severity: "MEDIUM",
+          title: "Missing Structural Elements",
+          description: "No structural components (columns, beams, slabs, foundations, walls, or grid lines) were found in this drawing. This is normal for architectural schematics but critical for structural details.",
+          entityA: "Structural Block",
+          recommendation: "Ensure that if this is a structural or concrete reinforcement drawing, columns, beams, slabs, and gridlines are fully modeled.",
+        });
+      }
     }
 
     // Check for missing grid lines when columns exist

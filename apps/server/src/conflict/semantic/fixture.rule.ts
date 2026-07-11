@@ -27,7 +27,8 @@ export class FixtureRule implements ConflictRule {
 
     // Check specific rooms (e.g. Bathrooms, Restrooms, Washrooms)
     for (const room of rooms) {
-      const roomNameLower = room.name.toLowerCase();
+      if (!room.name) continue;
+      const roomNameLower = String(room.name).toLowerCase();
       if (
         roomNameLower.includes("bath") ||
         roomNameLower.includes("toilet") ||

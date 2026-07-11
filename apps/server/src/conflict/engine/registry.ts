@@ -11,7 +11,7 @@ import { FixtureRule } from "../semantic/fixture.rule";
 import { StructuralRule } from "../semantic/structural.rule";
 
 import { WallDoorRule } from "../geometry/wall-door.rule";
-import { WallWindowRule } from "../geometry/wall-window.rule";
+import { ColumnWindowRule } from "../geometry/column-window.rule";
 import { BeamColumnRule } from "../geometry/beam-column.rule";
 import { BeamWallRule } from "../geometry/beam-wall.rule";
 import { SlabOpeningRule } from "../geometry/slab-opening.rule";
@@ -41,7 +41,7 @@ export const RULE_REGISTRY: ConflictRule[] = [
 
   // Geometry Rules
   new WallDoorRule(),
-  new WallWindowRule(),
+  new ColumnWindowRule(),
   new BeamColumnRule(),
   new BeamWallRule(),
   new SlabOpeningRule(),

@@ -7,7 +7,7 @@ export function parseBBox(val: any): BBox | null {
   if (!val) return null;
 
   if (Array.isArray(val) && val.length === 4) {
-    const parsed = val.map(Number);
+    const parsed = Array.from(val, Number);
     if (parsed.every((n) => !isNaN(n))) {
       return parsed as BBox;
     }
@@ -26,7 +26,7 @@ export function parseBBox(val: any): BBox | null {
       xMax !== undefined && !isNaN(xMax) &&
       yMax !== undefined && !isNaN(yMax)
     ) {
-      return [xMin, yMin, xMax, yMax];
+      return [Math.min(xMin, xMax), Math.min(yMin, yMax), Math.max(xMin, xMax), Math.max(yMin, yMax)];
     }
 
     // Check for x, y, width, height
@@ -41,7 +41,7 @@ export function parseBBox(val: any): BBox | null {
       w !== undefined && !isNaN(w) &&
       h !== undefined && !isNaN(h)
     ) {
-      return [x, y, x + w, y + h];
+      return [Math.min(x, x + w), Math.min(y, y + h), Math.max(x, x + w), Math.max(y, y + h)];
     }
   }
 

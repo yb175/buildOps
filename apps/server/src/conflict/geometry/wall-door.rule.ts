@@ -12,18 +12,22 @@ export class WallDoorRule implements ConflictRule {
     const doors = drawing.openings?.doors || [];
     const walls = drawing.structural?.walls || [];
 
+    const positiveAreaOverlap = (a: any, b: any) => {
+      return a[2] > b[0] && a[0] < b[2] && a[3] > b[1] && a[1] < b[3];
+    };
+
     // 1. Check for wall overlap
     for (let i = 0; i < walls.length; i++) {
       const wallA = walls[i];
-      const bboxA = parseBBox(wallA.bbox || wallA.geometry);
+      const bboxA = parseBBox(wallA.bbox) || parseBBox(wallA.geometry);
       if (!bboxA) continue;
 
       for (let j = i + 1; j < walls.length; j++) {
         const wallB = walls[j];
-        const bboxB = parseBBox(wallB.bbox || wallB.geometry);
+        const bboxB = parseBBox(wallB.bbox) || parseBBox(wallB.geometry);
         if (!bboxB) continue;
 
-        if (intersects(bboxA, bboxB)) {
+        if (positiveAreaOverlap(bboxA, bboxB)) {
           conflicts.push({
             id: randomUUID(),
             category: this.category,
@@ -40,11 +44,12 @@ export class WallDoorRule implements ConflictRule {
 
     // 2. Check for door inside/clashing with load bearing walls (doors should serve openings, not block load-bearing walls)
     for (const door of doors) {
-      const doorBBox = parseBBox(door.bbox || door.geometry);
+      const doorBBox = parseBBox(door.bbox) || parseBBox(door.geometry);
 
       for (const wall of walls) {
         if (wall.type === "LOAD_BEARING") {
-          const wallBBox = parseBBox(wall.bbox || wall.geometry);
+          const wallBBox = parseBBox(wall.bbox) || parseBBox(wall.geometry);
+          if (door.hostWallId === wall.id || door.parentWallId === wall.id) continue;
           if (doorBBox && wallBBox && intersects(doorBBox, wallBBox)) {
             conflicts.push({
               id: randomUUID(),
@@ -61,12 +66,11 @@ export class WallDoorRule implements ConflictRule {
       }
     }
 
-    // 3. Semantic fallback if no bboxes exist
-    const hasCoordinates = walls.some((w: any) => w.bbox || w.geometry) || doors.some((d: any) => d.bbox || d.geometry);
-    if (!hasCoordinates) {
-      // Check if any wall location contains the door ID or vice-versa incorrectly, or look for semantic indicators
-      for (const door of doors) {
-        if (door.location && door.location.toLowerCase().includes("load bearing")) {
+    // 3. Semantic fallback if no bboxes exist (per door)
+    for (const door of doors) {
+      const doorBBox = parseBBox(door.bbox) || parseBBox(door.geometry);
+      if (!doorBBox) {
+        if (door.location && String(door.location).toLowerCase().includes("load bearing")) {
           conflicts.push({
             id: randomUUID(),
             category: this.category,

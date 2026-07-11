@@ -14,14 +14,14 @@ export class BeamColumnRule implements ConflictRule {
     const walls = drawing.structural?.walls || [];
 
     for (const beam of beams) {
-      const beamBBox = parseBBox(beam.bbox || beam.geometry);
+      const beamBBox = parseBBox(beam.bbox) || parseBBox(beam.geometry);
       
       if (beamBBox) {
         // Check if beam intersects any column or wall (at least one support is required)
         let hasSupport = false;
 
         for (const col of columns) {
-          const colBBox = parseBBox(col.bbox || col.geometry);
+          const colBBox = parseBBox(col.bbox) || parseBBox(col.geometry);
           if (colBBox && intersects(beamBBox, colBBox)) {
             hasSupport = true;
             break;
@@ -31,7 +31,8 @@ export class BeamColumnRule implements ConflictRule {
         if (!hasSupport) {
           // Check walls as alternative supports
           for (const wall of walls) {
-            const wallBBox = parseBBox(wall.bbox || wall.geometry);
+            if (wall.type === "PARTITION") continue;
+          const wallBBox = parseBBox(wall.bbox) || parseBBox(wall.geometry);
             if (wallBBox && intersects(beamBBox, wallBBox)) {
               hasSupport = true;
               break;

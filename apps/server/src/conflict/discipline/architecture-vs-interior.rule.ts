@@ -34,6 +34,7 @@ export class ArchitectureVsInteriorRule implements ConflictRule {
 
     for (const arch of architecturalDrawings) {
       for (const interior of interiorDrawings) {
+        if (arch.id !== targetId && interior.id !== targetId) continue;
         const archDoors = arch.drawing.openings?.doors || [];
         const archWindows = arch.drawing.openings?.windows || [];
         const interiorFixtures = interior.drawing.fixtures || [];
@@ -43,12 +44,12 @@ export class ArchitectureVsInteriorRule implements ConflictRule {
         );
 
         for (const item of furniture) {
-          const itemBBox = parseBBox(item.bbox || item.geometry);
+          const itemBBox = parseBBox(item.bbox) || parseBBox(item.geometry);
           if (!itemBBox) continue;
 
           // Check if interior furniture blocks architectural doors
           for (const door of archDoors) {
-            const doorBBox = parseBBox(door.bbox || door.geometry);
+            const doorBBox = parseBBox(door.bbox) || parseBBox(door.geometry);
             if (doorBBox && intersects(itemBBox, doorBBox)) {
               conflicts.push({
                 id: randomUUID(),
@@ -65,7 +66,7 @@ export class ArchitectureVsInteriorRule implements ConflictRule {
 
           // Check if interior furniture blocks architectural windows
           for (const win of archWindows) {
-            const winBBox = parseBBox(win.bbox || win.geometry);
+            const winBBox = parseBBox(win.bbox) || parseBBox(win.geometry);
             if (winBBox && intersects(itemBBox, winBBox)) {
               conflicts.push({
                 id: randomUUID(),

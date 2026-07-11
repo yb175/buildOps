@@ -16,6 +16,15 @@ export function pointInPolygon(point: Point, polygon: Point[]): boolean {
     const [xi, yi] = polygon[i];
     const [xj, yj] = polygon[j];
 
+    // Check if point is on the edge
+    const crossProduct = (y - yi) * (xj - xi) - (x - xi) * (yj - yi);
+    if (Math.abs(crossProduct) < 1e-9) {
+      if (x >= Math.min(xi, xj) && x <= Math.max(xi, xj) &&
+          y >= Math.min(yi, yj) && y <= Math.max(yi, yj)) {
+        return true;
+      }
+    }
+
     const intersect =
       yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
     if (intersect) inside = !inside;
@@ -35,12 +44,27 @@ export function segmentsIntersect(
   p4: Point
 ): boolean {
   const ccw = (a: Point, b: Point, c: Point) => {
-    return (c[1] - a[1]) * (b[0] - a[0]) > (b[1] - a[1]) * (c[0] - a[0]);
+    return (c[1] - a[1]) * (b[0] - a[0]) - (b[1] - a[1]) * (c[0] - a[0]);
   };
 
-  return (
-    ccw(p1, p3, p4) !== ccw(p2, p3, p4) && ccw(p1, p2, p3) !== ccw(p1, p2, p4)
-  );
+  const c1 = ccw(p1, p2, p3);
+  const c2 = ccw(p1, p2, p4);
+  const c3 = ccw(p3, p4, p1);
+  const c4 = ccw(p3, p4, p2);
+
+  if (c1 * c2 < 0 && c3 * c4 < 0) return true;
+
+  const onSegment = (p: Point, a: Point, b: Point) => {
+    return p[0] >= Math.min(a[0], b[0]) && p[0] <= Math.max(a[0], b[0]) &&
+           p[1] >= Math.min(a[1], b[1]) && p[1] <= Math.max(a[1], b[1]);
+  };
+
+  if (Math.abs(c1) < 1e-9 && onSegment(p3, p1, p2)) return true;
+  if (Math.abs(c2) < 1e-9 && onSegment(p4, p1, p2)) return true;
+  if (Math.abs(c3) < 1e-9 && onSegment(p1, p3, p4)) return true;
+  if (Math.abs(c4) < 1e-9 && onSegment(p2, p3, p4)) return true;
+
+  return false;
 }
 
 /**

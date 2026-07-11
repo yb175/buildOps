@@ -34,6 +34,7 @@ export class ArchitectureVsElectricalRule implements ConflictRule {
 
     for (const arch of architecturalDrawings) {
       for (const elec of electricalDrawings) {
+        if (arch.id !== targetId && elec.id !== targetId) continue;
         const archDoors = arch.drawing.openings?.doors || [];
         const archWindows = arch.drawing.openings?.windows || [];
         const elecFixtures = elec.drawing.fixtures || [];
@@ -47,11 +48,11 @@ export class ArchitectureVsElectricalRule implements ConflictRule {
         );
 
         for (const panel of panels) {
-          const panelBBox = parseBBox(panel.bbox || panel.geometry);
+          const panelBBox = parseBBox(panel.bbox) || parseBBox(panel.geometry);
           if (!panelBBox) continue;
 
           for (const door of archDoors) {
-            const doorBBox = parseBBox(door.bbox || door.geometry);
+            const doorBBox = parseBBox(door.bbox) || parseBBox(door.geometry);
             if (doorBBox && intersects(panelBBox, doorBBox)) {
               conflicts.push({
                 id: randomUUID(),
@@ -67,7 +68,7 @@ export class ArchitectureVsElectricalRule implements ConflictRule {
           }
 
           for (const win of archWindows) {
-            const winBBox = parseBBox(win.bbox || win.geometry);
+            const winBBox = parseBBox(win.bbox) || parseBBox(win.geometry);
             if (winBBox && intersects(panelBBox, winBBox)) {
               conflicts.push({
                 id: randomUUID(),
