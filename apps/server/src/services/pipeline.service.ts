@@ -25,7 +25,7 @@ export class PipelineService {
   /**
    * Orchestrates the overall drawing analysis pipeline.
    */
-  async analyzeDrawing(drawingId: string): Promise<{ ocrOutput: string; parsedJson: any }> {
+  async analyzeDrawing(drawingId: string): Promise<{ parsedJson: any }> {
     logger.log(`[PipelineService] Starting analysis pipeline for drawingId: ${drawingId}`);
 
     // 1. Check Parsed JSON Cache
@@ -38,10 +38,7 @@ export class PipelineService {
     if (drawing.parsedJson !== null) {
       logger.log(`[PipelineService] Parsed JSON Cache Hit for drawing: ${drawingId}`);
       logger.log(`[PipelineService] Analysis pipeline completed successfully for drawingId: ${drawingId}`);
-      return {
-        ocrOutput: drawing.ocrOutput || "",
-        parsedJson: drawing.parsedJson,
-      };
+      return { parsedJson: drawing.parsedJson };
     }
     logger.log(`[PipelineService] Parsed JSON Cache Miss for drawing: ${drawingId}`);
 
@@ -92,7 +89,6 @@ export class PipelineService {
 
       // 6. Persist Parsed JSON and update status to PARSED
       logger.log(`[PipelineService] Persist Parsed JSON for drawingId: ${drawingId}`);
-      const ocrSummary = "Direct LLM multimodal processing (no OCR stage)";
       await this.drawingRepository.updateParsedJson(
         drawingId,
         parsedDrawing,
@@ -102,10 +98,7 @@ export class PipelineService {
       );
 
       logger.log(`[PipelineService] Analysis pipeline completed successfully for drawingId: ${drawingId}`);
-      return {
-        ocrOutput: ocrSummary,
-        parsedJson: parsedDrawing,
-      };
+      return { parsedJson: parsedDrawing };
     } catch (error) {
       logger.error(
         `[PipelineService] Normalization pipeline failed for drawing: ${drawingId}. Updating status to FAILED.`,

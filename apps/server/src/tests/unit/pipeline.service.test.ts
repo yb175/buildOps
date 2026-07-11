@@ -48,7 +48,6 @@ describe("PipelineService unit tests", () => {
     const result = await pipelineService.analyzeDrawing("drawing-1");
 
     expect(result).toEqual({
-      ocrOutput: "cached-ocr",
       parsedJson: cachedDrawing.parsedJson,
     });
     expect(mockDrawingRepository.findById).toHaveBeenCalledWith("drawing-1");
@@ -75,7 +74,6 @@ describe("PipelineService unit tests", () => {
     const result = await pipelineService.analyzeDrawing("drawing-1");
 
     expect(result).toEqual({
-      ocrOutput: "Direct LLM multimodal processing (no OCR stage)",
       parsedJson: mockParsedJson,
     });
     expect(mockDrawingRepository.findById).toHaveBeenCalledWith("drawing-1");
