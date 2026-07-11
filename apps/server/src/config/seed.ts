@@ -2,17 +2,18 @@ import { prisma } from "./prisma";
 import { Discipline, DrawingStatus, ConflictCategory, ConflictSeverity } from "@prisma/client";
 
 export async function seedDatabase() {
-  try {
-    const drawingCount = await prisma.drawing.count();
-    if (drawingCount > 0) {
-      console.log("🌱 Database already has drawings, skipping seed.");
-      return;
-    }
+  const drawingCount = await prisma.drawing.count();
+  if (drawingCount > 0) {
+    console.log("🌱 Database already has drawings, skipping seed.");
+    return;
+  }
 
-    console.log("🌱 Database is empty. Seeding initial BuildOps demo data...");
+  console.log("🌱 Database is empty. Seeding initial BuildOps demo data...");
 
+  // Run in a single transaction to ensure atomicity
+  await prisma.$transaction(async (tx) => {
     // Create 500 Gaj Residence Drawing (A-101 Ground Floor Plan)
-    const drawing1 = await prisma.drawing.create({
+    const drawing1 = await tx.drawing.create({
       data: {
         hash: "seed_hash_500_gaj_a101",
         fileName: "A-101_Ground_Floor_Plan.pdf",
@@ -23,6 +24,8 @@ export async function seedDatabase() {
         documentType: "Architectural Drawing",
         classificationConfidence: 0.98,
         projectName: "500 Gaj Residence",
+        drawingNo: "A-101",
+        revision: "Rev 0",
         parsedJson: {
           projectName: "500 Gaj Residence",
           drawingNumber: "A-101",
@@ -34,7 +37,7 @@ export async function seedDatabase() {
             { name: "Bedroom 2", dimensions: "14 x 14" },
           ],
         },
-      },
+      } as any,
     });
 
     // Create conflicts for drawing1
@@ -66,7 +69,7 @@ export async function seedDatabase() {
         title: "Staircase width below code minimum",
         description: "Staircase S1 clear width measures 900mm, which is below the National Building Code (NBC 2016) code minimum of 1000mm for residential egress.",
         entityA: "Staircase S1",
-        entityB: "None",
+        entityB: null,
         recommendation: "Increase staircase shaft framing to guarantee 1000mm clear egress path width. Re-align partition walls.",
       },
       {
@@ -96,7 +99,7 @@ export async function seedDatabase() {
         title: "Missing fire exit marking",
         description: "No fire exit sign or directional path marking is annotated on the exit corridor C1 path.",
         entityA: "Corridor C1",
-        entityB: "None",
+        entityB: null,
         recommendation: "Add standard exit signage annotation near door exit and pathway arrows according to safety standards.",
       },
       {
@@ -106,14 +109,14 @@ export async function seedDatabase() {
         title: "Missing scale annotation",
         description: "Graphic scale bar and numeric scale factor (e.g. 1:100) are missing from the drawing title block.",
         entityA: "Sheet A-101",
-        entityB: "None",
+        entityB: null,
         recommendation: "Add a scale bar under the Ground Floor title block.",
       },
     ];
 
     const createdConflicts = [];
     for (const c of conflicts) {
-      const dbConflict = await prisma.conflict.create({ data: c });
+      const dbConflict = await tx.conflict.create({ data: c });
       createdConflicts.push(dbConflict);
     }
 
@@ -148,11 +151,11 @@ export async function seedDatabase() {
     ];
 
     for (const rfi of rfiList) {
-      await prisma.rfi.create({ data: rfi });
+      await tx.rfi.create({ data: rfi });
     }
 
     // Create a dummy drawing for Villa 302
-    const drawing2 = await prisma.drawing.create({
+    const drawing2 = await tx.drawing.create({
       data: {
         hash: "seed_hash_villa_302_s101",
         fileName: "S-101_Foundation_Layout.pdf",
@@ -163,16 +166,18 @@ export async function seedDatabase() {
         documentType: "Structural Drawing",
         classificationConfidence: 0.95,
         projectName: "Villa 302",
+        drawingNo: "S-101",
+        revision: "Rev 0",
         parsedJson: {
           projectName: "Villa 302",
           drawingNumber: "S-101",
           discipline: "STRUCTURAL",
           spaces: [{ name: "Foundation", dimensions: "N/A" }],
         },
-      },
+      } as any,
     });
 
-    const c2 = await prisma.conflict.create({
+    const c2 = await tx.conflict.create({
       data: {
         drawingId: drawing2.id,
         category: ConflictCategory.GEOMETRY,
@@ -185,7 +190,7 @@ export async function seedDatabase() {
       },
     });
 
-    await prisma.rfi.create({
+    await tx.rfi.create({
       data: {
         drawingId: drawing2.id,
         conflictId: c2.id,
@@ -200,9 +205,7 @@ export async function seedDatabase() {
         conflictHash: "mock_rfi_hash_3",
       },
     });
+  });
 
-    console.log("🌱 Database seeded successfully!");
-  } catch (error) {
-    console.error("❌ Failed to seed database:", error);
-  }
+  console.log("🌱 Database seeded successfully!");
 }

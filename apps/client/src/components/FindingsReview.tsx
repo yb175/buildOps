@@ -30,6 +30,7 @@ export const FindingsReview: React.FC<FindingsReviewProps> = ({
   });
 
   const activeConflict = conflicts.find(c => c.id === selectedConflictId);
+  const activeConflictIndex = activeConflict ? conflicts.findIndex(c => c.id === activeConflict.id) : -1;
 
   return (
     <div style={{...viewWrapperStyle, display: "flex", flexDirection: "column", height: "calc(100vh - 54px)", padding: 0}}>
@@ -78,7 +79,7 @@ export const FindingsReview: React.FC<FindingsReviewProps> = ({
             {filteredConflicts.length === 0 ? (
               <div style={{padding: 20, textAlign: "center", color: "var(--text-secondary)"}}>No findings match filter criteria.</div>
             ) : (
-              filteredConflicts.map((c, index) => (
+              filteredConflicts.map((c) => (
                 <div 
                   key={c.id} 
                   className={`list-row ${selectedConflictId === c.id ? "active" : ""}`}
@@ -94,7 +95,7 @@ export const FindingsReview: React.FC<FindingsReviewProps> = ({
                   onClick={() => setSelectedConflictId(c.id)}
                 >
                   <div className="flex align-center justify-between" style={{width: "100%"}}>
-                    <span className="code-font" style={{fontWeight: "bold"}}>BLD-{String(index + 1).padStart(3, '0')}</span>
+                    <span className="code-font" style={{fontWeight: "bold"}}>BLD-{String(conflicts.findIndex(item => item.id === c.id) + 1).padStart(3, '0')}</span>
                     <span className={`badge ${
                       c.severity === "HIGH" ? "badge-high" : c.severity === "MEDIUM" ? "badge-medium" : "badge-low"
                     }`} style={{fontSize: 9, padding: "1px 4px"}}>
@@ -158,7 +159,7 @@ export const FindingsReview: React.FC<FindingsReviewProps> = ({
               <line x1="350" y1="180" x2="350" y2="210" stroke="var(--primary-navy)" strokeWidth="2" />
 
               {/* Interactive Red Warning Highlights when conflict is selected */}
-              {activeConflict?.title === "Door intersects wall" && (
+              {activeConflictIndex === 0 && (
                 <g>
                   {/* Red bounding box around Kitchen doorway */}
                   <rect x="315" y="170" width="50" height="50" fill="rgba(239, 68, 68, 0.15)" stroke="var(--danger-red)" strokeWidth="2" strokeDasharray="4,2" />
@@ -168,7 +169,7 @@ export const FindingsReview: React.FC<FindingsReviewProps> = ({
                 </g>
               )}
 
-              {activeConflict?.title === "Window opening exceeds structural span" && (
+              {activeConflictIndex === 1 && (
                 <g>
                   {/* Window W-02 conflict location */}
                   <rect x="560" y="90" width="20" height="80" fill="rgba(239, 68, 68, 0.15)" stroke="var(--danger-red)" strokeWidth="2" strokeDasharray="4,2" />
@@ -177,7 +178,7 @@ export const FindingsReview: React.FC<FindingsReviewProps> = ({
                 </g>
               )}
 
-              {activeConflict?.title === "Staircase width below code minimum" && (
+              {activeConflictIndex === 2 && (
                 <g>
                   {/* Staircase S1 location */}
                   <rect x="50" y="470" width="80" height="90" fill="rgba(239, 68, 68, 0.15)" stroke="var(--danger-red)" strokeWidth="2" strokeDasharray="4,2" />
@@ -186,7 +187,7 @@ export const FindingsReview: React.FC<FindingsReviewProps> = ({
                 </g>
               )}
 
-              {activeConflict?.title === "Duplicate room labels 'Bedroom 2'" && (
+              {activeConflictIndex === 4 && (
                 <g>
                   {/* Bedroom 2 location */}
                   <rect x="330" y="360" width="240" height="60" fill="rgba(217, 119, 6, 0.15)" stroke="var(--warning-amber)" strokeWidth="2" strokeDasharray="4,2" />
@@ -273,7 +274,7 @@ export const FindingsReview: React.FC<FindingsReviewProps> = ({
                   <button className="btn btn-outline flex-1" onClick={() => onResolveConflict(activeConflict.id)}>
                     Ignore / Resolve
                   </button>
-                  <button className="btn btn-outline flex-1" onClick={() => onResolveConflict(activeConflict.id)}>
+                  <button className="btn btn-outline flex-1" onClick={() => alert(`Conflict ${activeConflict.id.slice(0, 8)} has been flagged for project team review.`)}>
                     Flag Row
                   </button>
                 </div>

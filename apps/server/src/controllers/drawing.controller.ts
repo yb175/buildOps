@@ -1,20 +1,17 @@
 import { Request, Response, NextFunction } from "express";
 import { DrawingService } from "../services/drawing.service";
-import { DrawingRepository } from "../repositories/drawing.repository";
 import { validateDiscipline } from "../validations/drawing.validation";
 import { prisma } from "../config/prisma";
 import { Discipline } from "@prisma/client";
+import { NotFoundError } from "../errors/not-found.error";
 
 export class DrawingController {
   private drawingService: DrawingService;
-  private drawingRepository: DrawingRepository;
 
   constructor(
-    drawingService = new DrawingService(),
-    drawingRepository = new DrawingRepository()
+    drawingService = new DrawingService()
   ) {
     this.drawingService = drawingService;
-    this.drawingRepository = drawingRepository;
   }
 
   uploadDrawing = async (req: Request, res: Response, next: NextFunction) => {
@@ -25,7 +22,7 @@ export class DrawingController {
         return res.status(400).json({ error: "Missing file" });
       }
 
-      const { discipline, projectName } = req.body;
+      const { discipline, projectName, drawingNo, revision } = req.body;
       if (!discipline) {
         console.warn(`[DrawingController] Upload failed: Missing discipline for file: ${file.originalname}`);
         return res.status(400).json({ error: "Missing discipline" });
@@ -42,7 +39,9 @@ export class DrawingController {
         file.buffer,
         file.originalname,
         discipline as Discipline,
-        projectName
+        projectName,
+        drawingNo,
+        revision
       );
 
       const responseBody = {
@@ -86,106 +85,124 @@ export class DrawingController {
 
   getProjects = async (_req: Request, res: Response, next: NextFunction) => {
     try {
-      const drawings = await prisma.drawing.findMany({
-        include: {
-          conflicts: true,
-          rfis: true,
-        },
-      });
+      const drawings = (await prisma.drawing.findMany({
+        select: {
+          id: true,
+          projectName: true,
+          createdAt: true,
+          status: true,
+          _count: {
+            select: { conflicts: true, rfis: true },
+          },
+        } as any,
+      })) as any[];
 
-      // Define default projects so we always show the key demo ones even if DB is empty
-      const projectMap: Record<string, {
-        name: string;
-        lastUpdated: Date;
-        status: string;
-        issuesCount: number;
-        rfiCount: number;
-        manualTimeSaved: string;
-      }> = {
-        "500 Gaj Residence": {
+      const projectMap = Object.create(null);
+
+      // Stable static baseline date for demo projects
+      const baseDate = new Date("2026-07-11T14:00:00Z");
+
+      const isDatabaseEmpty = drawings.length === 0;
+
+      if (isDatabaseEmpty) {
+        // Return full empty-state demo data
+        projectMap["500 Gaj Residence"] = {
           name: "500 Gaj Residence",
-          lastUpdated: new Date(Date.now() - 12 * 60 * 1000), // 12 mins ago
+          lastUpdated: new Date(baseDate.getTime() - 12 * 60 * 1000),
           status: "IN REVIEW",
-          issuesCount: 0,
-          rfiCount: 0,
-          manualTimeSaved: "0h 0m",
-        },
-        "Villa 302": {
+          issuesCount: 17,
+          rfiCount: 4,
+          manualTimeSaved: "2h 14m",
+        };
+        projectMap["Villa 302"] = {
           name: "Villa 302",
-          lastUpdated: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+          lastUpdated: new Date(baseDate.getTime() - 2 * 60 * 60 * 1000),
+          status: "READY",
+          issuesCount: 4,
+          rfiCount: 1,
+          manualTimeSaved: "0h 32m",
+        };
+        projectMap["Mall Expansion Phase 1"] = {
+          name: "Mall Expansion Phase 1",
+          lastUpdated: new Date(baseDate.getTime() - 24 * 60 * 60 * 1000),
+          status: "HIGH PRIORITY",
+          issuesCount: 32,
+          rfiCount: 9,
+          manualTimeSaved: "4h 16m",
+        };
+      } else {
+        // Initialize default empty projects with zero stats to guarantee they show up
+        projectMap["500 Gaj Residence"] = {
+          name: "500 Gaj Residence",
+          lastUpdated: new Date(baseDate.getTime() - 12 * 60 * 1000),
           status: "READY",
           issuesCount: 0,
           rfiCount: 0,
           manualTimeSaved: "0h 0m",
-        },
-        "Mall Expansion Phase 1": {
+        };
+        projectMap["Villa 302"] = {
+          name: "Villa 302",
+          lastUpdated: new Date(baseDate.getTime() - 2 * 60 * 60 * 1000),
+          status: "READY",
+          issuesCount: 0,
+          rfiCount: 0,
+          manualTimeSaved: "0h 0m",
+        };
+        projectMap["Mall Expansion Phase 1"] = {
           name: "Mall Expansion Phase 1",
-          lastUpdated: new Date(Date.now() - 24 * 60 * 60 * 1000), // Yesterday
+          lastUpdated: new Date(baseDate.getTime() - 24 * 60 * 60 * 1000),
           status: "HIGH PRIORITY",
           issuesCount: 0,
           rfiCount: 0,
           manualTimeSaved: "0h 0m",
-        },
-      };
+        };
 
-      // Populate database values
-      drawings.forEach((d) => {
-        const projName = (d as any).projectName || "500 Gaj Residence";
-        if (!projectMap[projName]) {
-          projectMap[projName] = {
-            name: projName,
-            lastUpdated: d.createdAt,
-            status: "READY",
-            issuesCount: 0,
-            rfiCount: 0,
-            manualTimeSaved: "0h 0m",
-          };
-        }
+        // Populate from real database records
+        drawings.forEach((d) => {
+          const projName = d.projectName || "500 Gaj Residence";
+          
+          // Validate project name to prevent prototype pollution or empty/garbage names
+          if (typeof projName !== "string" || projName.trim() === "") return;
 
-        const proj = projectMap[projName];
-        if (d.createdAt > proj.lastUpdated) {
-          proj.lastUpdated = d.createdAt;
-        }
-
-        proj.issuesCount += (d as any).conflicts?.length || 0;
-        proj.rfiCount += (d as any).rfis?.length || 0;
-
-        // Set status based on drawing status
-        if (d.status === "FAILED") {
-          proj.status = "HIGH PRIORITY";
-        } else if (d.status === "PARSING" || d.status === "UPLOADED") {
-          proj.status = "IN REVIEW";
-        }
-      });
-
-      // Update manual time saved formatting (let's say 8 minutes saved per conflict)
-      Object.values(projectMap).forEach((p) => {
-        const totalMinutes = p.issuesCount * 8;
-        if (totalMinutes > 0) {
-          const hrs = Math.floor(totalMinutes / 60);
-          const mins = totalMinutes % 60;
-          p.manualTimeSaved = `${hrs}h ${mins}m`;
-        } else {
-          // Defaults for demo
-          if (p.name === "500 Gaj Residence") p.manualTimeSaved = "2h 14m";
-          else if (p.name === "Villa 302") p.manualTimeSaved = "0h 32m";
-          else if (p.name === "Mall Expansion Phase 1") p.manualTimeSaved = "4h 16m";
-        }
-        
-        // Also ensure demo project status counts align with what user expects if DB is unseeded
-        if (p.issuesCount === 0) {
-          if (p.name === "500 Gaj Residence") {
-            p.issuesCount = 17;
-            p.rfiCount = 4;
-          } else if (p.name === "Villa 302") {
-            p.issuesCount = 4;
-            p.rfiCount = 1;
-          } else if (p.name === "Mall Expansion Phase 1") {
-            p.issuesCount = 32;
-            p.rfiCount = 9;
+          if (!projectMap[projName]) {
+            projectMap[projName] = {
+              name: projName,
+              lastUpdated: d.createdAt,
+              status: "READY",
+              issuesCount: 0,
+              rfiCount: 0,
+              manualTimeSaved: "0h 0m",
+            };
           }
-        }
-      });
+
+          const proj = projectMap[projName];
+          // Use real drawing date if newer
+          if (d.createdAt > proj.lastUpdated) {
+            proj.lastUpdated = d.createdAt;
+          }
+
+          proj.issuesCount += d._count?.conflicts || 0;
+          proj.rfiCount += d._count?.rfis || 0;
+
+          if (d.status === "FAILED") {
+            proj.status = "HIGH PRIORITY";
+          } else if (d.status === "PARSING" || d.status === "UPLOADED") {
+            proj.status = "IN REVIEW";
+          }
+        });
+
+        // Compute manual time saved: 8 mins per issue
+        Object.values(projectMap).forEach((p: any) => {
+          const totalMinutes = p.issuesCount * 8;
+          if (totalMinutes > 0) {
+            const hrs = Math.floor(totalMinutes / 60);
+            const mins = totalMinutes % 60;
+            p.manualTimeSaved = `${hrs}h ${mins}m`;
+          } else {
+            p.manualTimeSaved = "0h 0m";
+          }
+        });
+      }
 
       res.json(Object.values(projectMap));
     } catch (error) {
@@ -230,9 +247,12 @@ export class DrawingController {
   deleteDrawing = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      await this.drawingRepository.delete(id);
+      await this.drawingService.deleteDrawing(id);
       res.json({ success: true, message: "Drawing deleted successfully" });
     } catch (error) {
+      if (error instanceof NotFoundError) {
+        return res.status(404).json({ error: error.message });
+      }
       next(error);
     }
   };

@@ -33,6 +33,21 @@ export const DrawingUpload: React.FC<DrawingUploadProps> = ({
   onSubmit,
   onCancel,
 }) => {
+  const handleDropzoneClick = (e: React.MouseEvent) => {
+    // Avoid double triggers when clicking label or input or any nested button
+    if (
+      (e.target as HTMLElement).tagName === "LABEL" ||
+      (e.target as HTMLElement).tagName === "INPUT" ||
+      (e.target as HTMLElement).closest(".btn")
+    ) {
+      return;
+    }
+    const input = document.getElementById("drawing-file-input");
+    if (input) {
+      input.click();
+    }
+  };
+
   return (
     <div style={viewWrapperStyle}>
       <div style={{maxWidth: 800, margin: "0 auto"}}>
@@ -42,7 +57,7 @@ export const DrawingUpload: React.FC<DrawingUploadProps> = ({
         <form onSubmit={onSubmit} className="panel" style={{display: "flex", flexDirection: "column", gap: 20, marginTop: 20}}>
           
           {/* Dragzone */}
-          <div style={dropzoneStyle}>
+          <div style={dropzoneStyle} onClick={handleDropzoneClick}>
             <svg style={{width: 48, height: 48, color: "var(--text-secondary)", marginBottom: 12}} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
             </svg>
@@ -58,6 +73,7 @@ export const DrawingUpload: React.FC<DrawingUploadProps> = ({
             <input 
               type="file" 
               id="drawing-file-input" 
+              accept=".pdf,.dwg,.dxf,.rvt"
               style={{display: "none"}} 
               onChange={(e) => {
                 if (e.target.files && e.target.files[0]) {

@@ -8,7 +8,7 @@ interface RfiListProps {
 export const RfiList: React.FC<RfiListProps> = ({ rfis }) => {
   return (
     <div style={viewWrapperStyle}>
-      <h1 style={titleStyle}>RFIS (REQUESTS FOR INFORMATION)</h1>
+      <h1 style={titleStyle}>RFIs (REQUESTS FOR INFORMATION)</h1>
       <p style={subtitleStyle}>List of coordinate RFI drafts generated from drawings reviews</p>
 
       <div className="panel" style={{padding: 0, overflow: "hidden", marginTop: 20}}>
@@ -31,14 +31,16 @@ export const RfiList: React.FC<RfiListProps> = ({ rfis }) => {
                 </td>
               </tr>
             ) : (
-              rfis.map((r, index) => (
+              rfis.map((r) => (
                 <tr key={r.id} style={tableBodyRowStyle}>
                   <td style={{...tableCellStyle, fontWeight: 600}} className="code-font">
-                    RFI-{String(index + 1).padStart(3, '0')}
+                    RFI-{r.id.slice(0, 4).toUpperCase()}
                   </td>
                   <td style={{...tableCellStyle, fontWeight: 600}}>{r.subject}</td>
                   <td style={tableCellStyle}>
-                    <span className={`badge ${r.priority === "HIGH" ? "badge-high" : "badge-low"}`}>
+                    <span className={`badge ${
+                      r.priority === "HIGH" ? "badge-high" : r.priority === "MEDIUM" ? "badge-medium" : "badge-low"
+                    }`}>
                       {r.priority}
                     </span>
                   </td>
@@ -47,7 +49,9 @@ export const RfiList: React.FC<RfiListProps> = ({ rfis }) => {
                     {r.question}
                   </td>
                   <td style={tableCellStyle}>
-                    <span className={`badge ${r.status === "SENT" ? "badge-complete" : "badge-review"}`}>
+                    <span className={`badge ${
+                      r.status === "SENT" ? "badge-complete" : r.status === "PENDING" || r.status === "GENERATED" ? "badge-pending" : "badge-review"
+                    }`}>
                       {r.status}
                     </span>
                   </td>

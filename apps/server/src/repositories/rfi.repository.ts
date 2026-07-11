@@ -53,4 +53,14 @@ export class RfiRepository {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable
     });
   }
+
+  /**
+   * Updates an existing RFI by ID.
+   */
+  async update(id: string, data: Partial<DBRfi>): Promise<DBRfi> {
+    return (prisma.rfi.update as any)({
+      where: { id },
+      data,
+    });
+  }
 }

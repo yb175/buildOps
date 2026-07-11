@@ -3,9 +3,14 @@ import { prisma } from "../config/prisma";
 import { Drawing, Discipline, DrawingStatus } from "@prisma/client";
 
 export class DrawingRepository {
-  async findByHash(hash: string): Promise<Drawing | null> {
+  async findByHash(hash: string, projectName: string = "500 Gaj Residence"): Promise<Drawing | null> {
     return prisma.drawing.findUnique({
-      where: { hash },
+      where: {
+        hash_projectName: {
+          hash,
+          projectName,
+        },
+      } as any,
     });
   }
 
@@ -16,6 +21,8 @@ export class DrawingRepository {
     publicId: string;
     discipline: Discipline;
     projectName?: string;
+    drawingNo?: string;
+    revision?: string;
   }): Promise<Drawing> {
     return prisma.drawing.create({
       data: {
@@ -26,6 +33,8 @@ export class DrawingRepository {
         discipline: data.discipline,
         status: "UPLOADED",
         projectName: data.projectName || "500 Gaj Residence",
+        drawingNo: data.drawingNo,
+        revision: data.revision,
       } as any,
     });
   }
@@ -36,11 +45,6 @@ export class DrawingRepository {
     });
   }
 
-  async findAll(): Promise<Drawing[]> {
-    return prisma.drawing.findMany({
-      orderBy: { createdAt: "desc" },
-    });
-  }
 
   async findByProject(projectName: string): Promise<Drawing[]> {
     return prisma.drawing.findMany({

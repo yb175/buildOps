@@ -45,6 +45,15 @@ export const ProjectsDashboard: React.FC<ProjectsDashboardProps> = ({
                 key={p.name} 
                 style={tableBodyRowStyle}
                 onClick={() => onSelectProject(p.name)}
+                tabIndex={0}
+                role="button"
+                aria-label={`Select project ${p.name}`}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelectProject(p.name);
+                  }
+                }}
               >
                 <td style={{...tableCellStyle, fontWeight: 600, color: "var(--primary-navy)"}}>
                   📁 {p.name}

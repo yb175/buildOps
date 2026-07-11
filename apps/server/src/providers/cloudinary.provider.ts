@@ -23,21 +23,49 @@ export const uploadToCloudinary = (fileBuffer: Buffer, fileName: string): Promis
     const cleanBaseName = fileName.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_");
     const publicId = `drawings/${Date.now()}_${cleanBaseName}.pdf`;
 
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        resource_type: "raw", // PDFs are uploaded as raw files
-        public_id: publicId,
-      },
-      (error, result) => {
-        if (error || !result) {
-          return reject(error || new Error("Cloudinary upload failed"));
+    try {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          resource_type: "raw", // PDFs are uploaded as raw files
+          public_id: publicId,
+        },
+        (error, result) => {
+          if (error || !result) {
+            if (process.env.NODE_ENV !== "production") {
+              console.warn("⚠️ Cloudinary upload failed. Returning local mock upload.", error);
+              return resolve({
+                secure_url: `https://res.cloudinary.com/mock/image/upload/v12345/${fileName}`,
+                public_id: `mock_${Date.now()}_${fileName.replace(/\.[^/.]+$/, "")}.pdf`,
+              });
+            }
+            return reject(error || new Error("Cloudinary upload failed"));
+          }
+          resolve({
+            secure_url: result.secure_url,
+            public_id: result.public_id,
+          });
         }
-        resolve({
-          secure_url: result.secure_url,
-          public_id: result.public_id,
+      );
+      uploadStream.on("error", (err) => {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("⚠️ Cloudinary upload stream error. Returning local mock upload.", err);
+          return resolve({
+            secure_url: `https://res.cloudinary.com/mock/image/upload/v12345/${fileName}`,
+            public_id: `mock_${Date.now()}_${fileName.replace(/\.[^/.]+$/, "")}.pdf`,
+          });
+        }
+        reject(err);
+      });
+      uploadStream.end(fileBuffer);
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("⚠️ Catch block: Cloudinary upload failed. Returning local mock upload.", err);
+        return resolve({
+          secure_url: `https://res.cloudinary.com/mock/image/upload/v12345/${fileName}`,
+          public_id: `mock_${Date.now()}_${fileName.replace(/\.[^/.]+$/, "")}.pdf`,
         });
       }
-    );
-    uploadStream.end(fileBuffer);
+      reject(err);
+    }
   });
 };

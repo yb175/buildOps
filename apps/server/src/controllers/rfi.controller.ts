@@ -48,4 +48,29 @@ export class RfiController {
       next(error);
     }
   };
+
+  /**
+   * Updates an RFI by ID.
+   */
+  updateRfi = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id, rfiId } = req.params;
+      const { priority, subject, question, recommendation, status } = req.body;
+
+      const rfi = await this.rfiService.updateRfi(id, rfiId, {
+        priority,
+        subject,
+        question,
+        recommendation,
+        status,
+      });
+
+      return res.status(200).json(rfi);
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
+    }
+  };
 }

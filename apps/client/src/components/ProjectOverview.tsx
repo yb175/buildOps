@@ -111,7 +111,7 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                   projectDetails.drawings.map(d => (
                     <tr key={d.id} style={tableBodyRowStyle}>
                       <td style={{...tableCellStyle, fontWeight: 600}} className="code-font">
-                        {d.discipline === "ARCHITECTURAL" ? "A-101" : "S-101"}
+                        {d.drawingNo || (d.discipline === "ARCHITECTURAL" ? "A-101" : "S-101")}
                       </td>
                       <td style={tableCellStyle}>{d.fileName}</td>
                       <td style={tableCellStyle}>{d.discipline}</td>
@@ -164,10 +164,10 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                     </td>
                   </tr>
                 ) : (
-                  projectDetails.rfis.map((r, index) => (
+                  projectDetails.rfis.map((r) => (
                     <tr key={r.id} style={tableBodyRowStyle}>
                       <td style={{...tableCellStyle, fontWeight: 600}} className="code-font">
-                        RFI-{String(index + 1).padStart(3, '0')}
+                        RFI-{r.id.slice(0, 4).toUpperCase()}
                       </td>
                       <td style={tableCellStyle}>{r.subject}</td>
                       <td style={tableCellStyle}>BuildOps (Auto)</td>

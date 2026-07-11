@@ -16,6 +16,8 @@ export interface Drawing {
   conflictsCount: number;
   rfisCount: number;
   projectName: string;
+  drawingNo?: string;
+  revision?: string;
 }
 
 export interface Conflict {

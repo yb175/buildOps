@@ -36,7 +36,7 @@ enum RfiStatus {
 
 model Drawing {
   id         String         @id @default(uuid()) @db.Uuid
-  hash       String         @unique @db.VarChar(64)
+  hash       String         @db.VarChar(64)
   fileName   String?        @map("file_name") @db.VarChar
   fileUrl    String?        @map("file_url") @db.Text
   publicId   String?        @map("public_id") @db.VarChar
@@ -48,10 +48,13 @@ model Drawing {
   classificationConfidence Float?         @map("classification_confidence")
   createdAt                DateTime       @default(now()) @map("created_at") @db.Timestamp
   projectName              String?        @map("project_name") @db.VarChar
+  drawingNo                String?        @map("drawing_no") @db.VarChar
+  revision                 String?        @map("revision") @db.VarChar
 
   conflicts  Conflict[]
   rfis       Rfi[]
 
+  @@unique([hash, projectName])
   @@map("drawings")
 }
 

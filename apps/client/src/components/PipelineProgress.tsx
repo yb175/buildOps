@@ -55,7 +55,7 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
             {/* Steps */}
             <div style={{display: "flex", flexDirection: "column", gap: 16}}>
               <div style={{...pipelineStepRowStyle, opacity: pipelineStep >= 1 ? 1 : 0.4}}>
-                <span style={pipelineStep >= 1 ? pipelineDoneIndicatorStyle : pipelinePendingIndicatorStyle}>
+                <span style={pipelineStep >= 1 ? (pipelineStep > 1 ? pipelineDoneIndicatorStyle : pipelineActiveIndicatorStyle) : pipelinePendingIndicatorStyle}>
                   {pipelineStep > 1 ? "✓" : "1"}
                 </span>
                 <div>
@@ -95,7 +95,7 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
               </div>
 
               <div style={{...pipelineStepRowStyle, opacity: pipelineStep >= 5 ? 1 : 0.4}}>
-                <span style={pipelineStep >= 5 ? pipelineDoneIndicatorStyle : pipelinePendingIndicatorStyle}>
+                <span style={pipelineStep >= 5 ? (pipelineStep > 5 ? pipelineDoneIndicatorStyle : pipelineActiveIndicatorStyle) : pipelinePendingIndicatorStyle}>
                   {pipelineStep > 5 ? "✓" : "5"}
                 </span>
                 <div>

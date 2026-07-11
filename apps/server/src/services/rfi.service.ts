@@ -143,4 +143,11 @@ export class RfiService {
     // 8. Persist to database & return
     return this.rfiRepository.saveRfis(drawingId, validatedRfis, hash);
   }
+
+  /**
+   * Updates an existing RFI.
+   */
+  async updateRfi(_drawingId: string, rfiId: string, data: Partial<DBRfi>): Promise<DBRfi> {
+    return this.rfiRepository.update(rfiId, data);
+  }
 }

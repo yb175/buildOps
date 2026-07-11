@@ -44,18 +44,29 @@ export default function App() {
   const [pipelineLogs, setPipelineLogs] = useState<string[]>([]);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
 
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [projectsError, setProjectsError] = useState<string | null>(null);
+  const pipelineAbortedRef = React.useRef(false);
+
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
   // Fetch all projects for the dashboard
   const fetchProjects = async () => {
+    setProjectsLoading(true);
+    setProjectsError(null);
     try {
       const res = await fetch(`${API_URL}/drawings/projects`);
       if (res.ok) {
         const data = await res.json();
         setProjects(data);
+      } else {
+        setProjectsError(`Server responded with status: ${res.status}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to fetch projects:", err);
+      setProjectsError(err.message || "Failed to fetch projects");
+    } finally {
+      setProjectsLoading(false);
     }
   };
 
@@ -66,6 +77,9 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setProjectDetails(data);
+        if (data.rfis) {
+          setRfis(data.rfis);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch project details:", err);
@@ -157,8 +171,16 @@ export default function App() {
     }
   };
 
+  // Cancel pipeline run gracefully
+  const handleCancelPipeline = () => {
+    pipelineAbortedRef.current = true;
+    setPipelineError(null);
+    setCurrentView("upload");
+  };
+
   // Run GitLab-style analysis pipeline logs and API triggers
   const startPipelineProcessing = async (id: string, _name: string) => {
+    pipelineAbortedRef.current = false;
     const steps = [
       { step: 1, progress: 20, log: "Document classification & intake verified." },
       { step: 2, progress: 40, log: "Rendering drawing layers at high definition (300 DPI)." },
@@ -168,40 +190,39 @@ export default function App() {
     ];
 
     for (let i = 0; i < steps.length; i++) {
+      if (pipelineAbortedRef.current) return;
       await new Promise(r => setTimeout(r, 1500));
+      if (pipelineAbortedRef.current) return;
+
       setPipelineStep(steps[i].step);
       setPipelineProgress(steps[i].progress);
       setPipelineLogs(prev => [...prev, `${new Date().toLocaleTimeString()} - ${steps[i].log}`]);
 
-      // Trigger backend endpoints during appropriate steps
-      if (steps[i].step === 3) {
-        // Trigger Analyze
-        try {
-          await fetch(`${API_URL}/drawings/${id}/analyze`, { method: "POST" });
-        } catch (err) {
-          console.warn("Analyze failed or cached:", err);
+      // Trigger backend endpoints during appropriate steps and stop on failure
+      try {
+        if (steps[i].step === 3) {
+          const res = await fetch(`${API_URL}/drawings/${id}/analyze`, { method: "POST" });
+          if (!res.ok) throw new Error(`Analysis step failed with status ${res.status}`);
         }
-      }
-      if (steps[i].step === 4) {
-        // Trigger Conflict Detection
-        try {
-          await fetch(`${API_URL}/drawings/${id}/conflicts`, { method: "POST" });
-        } catch (err) {
-          console.warn("Conflict detection failed:", err);
+        if (steps[i].step === 4) {
+          const res = await fetch(`${API_URL}/drawings/${id}/conflicts`, { method: "POST" });
+          if (!res.ok) throw new Error(`Conflict validation step failed with status ${res.status}`);
         }
-      }
-      if (steps[i].step === 5) {
-        // Trigger RFI Generation
-        try {
-          await fetch(`${API_URL}/drawings/${id}/rfis`, { method: "POST" });
-        } catch (err) {
-          console.warn("RFI generation failed:", err);
+        if (steps[i].step === 5) {
+          const res = await fetch(`${API_URL}/drawings/${id}/rfis`, { method: "POST" });
+          if (!res.ok) throw new Error(`RFI generation step failed with status ${res.status}`);
         }
+      } catch (err: any) {
+        console.error(err);
+        setPipelineError(err.message || "Pipeline execution failed");
+        return;
       }
     }
 
-    // Pipeline finish -> Load review screen
+    if (pipelineAbortedRef.current) return;
     await new Promise(r => setTimeout(r, 1000));
+    if (pipelineAbortedRef.current) return;
+
     try {
       const res = await fetch(`${API_URL}/drawings/projects/${encodeURIComponent(selectedProject)}`);
       if (res.ok) {
@@ -232,17 +253,32 @@ export default function App() {
     e.preventDefault();
     if (!activeDrawing || !selectedConflictId) return;
 
+    const targetRfi = rfis.find(r => r.conflictId === selectedConflictId);
+    if (!targetRfi) {
+      console.warn("No generated RFI found for this conflict to update.");
+      return;
+    }
+
     try {
-      const res = await fetch(`${API_URL}/drawings/${activeDrawing.id}/rfis`);
+      const res = await fetch(`${API_URL}/drawings/${activeDrawing.id}/rfis/${targetRfi.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: rfiSubject,
+          question: rfiQuestion,
+          recommendation: rfiRecommendation,
+          status: "REVIEWED"
+        })
+      });
       if (res.ok) {
-        await res.json();
-        const updatedRfis = rfis.map(r => {
-          if (r.conflictId === selectedConflictId) {
-            return { ...r, status: "REVIEWED", subject: rfiSubject, question: rfiQuestion, recommendation: rfiRecommendation };
-          }
-          return r;
-        });
-        setRfis(updatedRfis);
+        const updatedRfi = await res.json();
+        setRfis(prev => prev.map(r => r.id === updatedRfi.id ? updatedRfi : r));
+        if (projectDetails) {
+          setProjectDetails({
+            ...projectDetails,
+            rfis: projectDetails.rfis.map(r => r.id === updatedRfi.id ? updatedRfi : r)
+          });
+        }
       }
       setShowRfiModal(false);
     } catch (err) {
@@ -264,7 +300,9 @@ export default function App() {
         currentView={currentView} 
         setCurrentView={(view) => {
           setCurrentView(view);
-          fetchProjects();
+          if (view === "projects") {
+            fetchProjects();
+          }
         }} 
       />
 
@@ -278,17 +316,26 @@ export default function App() {
 
         {/* View Router */}
         {currentView === "projects" && (
-          <ProjectsDashboard 
-            projects={projects}
-            onSelectProject={(projectName) => {
-              setSelectedProject(projectName);
-              setCurrentView("overview");
-            }}
-            onNewProjectDrawing={() => {
-              setSelectedProject("500 Gaj Residence");
-              setCurrentView("upload");
-            }}
-          />
+          projectsLoading ? (
+            <div style={{padding: 24, textAlign: "center", color: "var(--text-secondary)"}}>Loading projects...</div>
+          ) : projectsError ? (
+            <div style={{padding: 24, textAlign: "center", color: "var(--danger-red)"}}>
+              <p>Error: {projectsError}</p>
+              <button className="btn btn-outline" onClick={fetchProjects}>Retry</button>
+            </div>
+          ) : (
+            <ProjectsDashboard 
+              projects={projects}
+              onSelectProject={(projectName) => {
+                setSelectedProject(projectName);
+                setCurrentView("overview");
+              }}
+              onNewProjectDrawing={() => {
+                setSelectedProject("500 Gaj Residence");
+                setCurrentView("upload");
+              }}
+            />
+          )
         )}
 
         {currentView === "overview" && projectDetails && (
@@ -327,7 +374,7 @@ export default function App() {
             pipelineStep={pipelineStep}
             pipelineLogs={pipelineLogs}
             pipelineError={pipelineError}
-            onCancel={() => setCurrentView("upload")}
+            onCancel={handleCancelPipeline}
           />
         )}
 

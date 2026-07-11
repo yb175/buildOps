@@ -32,6 +32,8 @@ body {
 
 *, *:before, *:after {
   box-sizing: inherit;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--bg);
 }
 
 /* Custom Scrollbar for Blueprint Software feeling */
@@ -61,6 +63,7 @@ body {
 .flex-col { flex-direction: column; }
 .align-center { align-items: center; }
 .justify-between { justify-content: space-between; }
+.justify-end { justify-content: flex-end; }
 .flex-1 { flex: 1; }
 
 /* Status Badges */
@@ -103,7 +106,7 @@ body {
 
 .badge-pending {
   background-color: #E5E7EB;
-  color: var(--text-secondary);
+  color: #374151;
 }
 
 /* Row elements */
