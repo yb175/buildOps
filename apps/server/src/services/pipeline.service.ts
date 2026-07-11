@@ -1,4 +1,5 @@
 import { OCRService } from "./ocr.service";
+import { logger } from "../utils/logger";
 
 export class PipelineService {
   private ocrService: OCRService;
@@ -12,7 +13,14 @@ export class PipelineService {
    * Currently triggers Stage 1 (OCR Extraction).
    */
   async analyzeDrawing(drawingId: string): Promise<{ ocrOutput: string }> {
-    const ocrOutput = await this.ocrService.extractText(drawingId);
-    return { ocrOutput };
+    logger.log(`[PipelineService] Starting analysis pipeline for drawingId: ${drawingId}`);
+    try {
+      const ocrOutput = await this.ocrService.extractText(drawingId);
+      logger.log(`[PipelineService] Analysis pipeline completed successfully for drawingId: ${drawingId}`);
+      return { ocrOutput };
+    } catch (error) {
+      logger.error(`[PipelineService] Analysis pipeline failed for drawingId: ${drawingId}`, error);
+      throw error;
+    }
   }
 }

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { OCRService } from "../../services/ocr.service";
 import * as pdfUtil from "../../utils/pdf.util";
+import { NotFoundError } from "../../errors/not-found.error";
 
 describe("OCRService unit tests", () => {
   let ocrService: OCRService;
@@ -11,6 +12,7 @@ describe("OCRService unit tests", () => {
     mockDrawingRepository = {
       findById: vi.fn(),
       updateOcrOutput: vi.fn(),
+      updateStatus: vi.fn(),
     };
     mockMistralProvider = {
       uploadFile: vi.fn(),
@@ -23,29 +25,29 @@ describe("OCRService unit tests", () => {
     vi.restoreAllMocks();
   });
 
-  it("should return cached OCR output if it exists", async () => {
+  it("should return cached OCR output if it exists (including empty string)", async () => {
     const mockDrawing = {
       id: "drawing-1",
-      ocrOutput: "cached-ocr-content",
+      ocrOutput: "", // Empty string is a valid cached OCR result
       fileName: "drawing.pdf",
     };
     mockDrawingRepository.findById.mockResolvedValue(mockDrawing);
 
     const result = await ocrService.extractText("drawing-1");
 
-    expect(result).toBe("cached-ocr-content");
+    expect(result).toBe("");
     expect(mockDrawingRepository.findById).toHaveBeenCalledWith("drawing-1");
     expect(mockMistralProvider.uploadFile).not.toHaveBeenCalled();
     expect(mockMistralProvider.performOCR).not.toHaveBeenCalled();
   });
 
-  it("should throw error if drawing is not found", async () => {
+  it("should throw NotFoundError if drawing is not found", async () => {
     mockDrawingRepository.findById.mockResolvedValue(null);
 
-    await expect(ocrService.extractText("non-existent")).rejects.toThrow("Drawing not found");
+    await expect(ocrService.extractText("non-existent")).rejects.toThrow(NotFoundError);
   });
 
-  it("should run complete OCR flow on cache miss and save output", async () => {
+  it("should run complete OCR flow on cache miss and save output with status", async () => {
     const mockDrawing = {
       id: "drawing-1",
       ocrOutput: null,
@@ -69,13 +71,17 @@ describe("OCRService unit tests", () => {
     expect(downloadSpy).toHaveBeenCalledWith("https://cloudinary.com/pdf");
     expect(mockMistralProvider.uploadFile).toHaveBeenCalledTimes(1);
     expect(mockMistralProvider.performOCR).toHaveBeenCalledWith("mistral-file-id");
+    
+    // Status transition assertions
+    expect(mockDrawingRepository.updateStatus).toHaveBeenCalledWith("drawing-1", "OCR_PROCESSING");
     expect(mockDrawingRepository.updateOcrOutput).toHaveBeenCalledWith(
       "drawing-1",
-      "Page 1 Extracted text\n\nPage 2 Extracted text"
+      "Page 1 Extracted text\n\nPage 2 Extracted text",
+      "OCR_COMPLETED"
     );
   });
 
-  it("should propagate Mistral provider errors", async () => {
+  it("should update status to OCR_FAILED and propagate Mistral provider errors", async () => {
     const mockDrawing = {
       id: "drawing-1",
       ocrOutput: null,
@@ -88,5 +94,8 @@ describe("OCRService unit tests", () => {
     mockMistralProvider.uploadFile.mockRejectedValue(new Error("Upload failure"));
 
     await expect(ocrService.extractText("drawing-1")).rejects.toThrow("Upload failure");
+    
+    expect(mockDrawingRepository.updateStatus).toHaveBeenCalledWith("drawing-1", "OCR_PROCESSING");
+    expect(mockDrawingRepository.updateStatus).toHaveBeenCalledWith("drawing-1", "OCR_FAILED");
   });
 });

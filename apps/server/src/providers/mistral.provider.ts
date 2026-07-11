@@ -6,8 +6,8 @@ export class MistralProvider {
   private baseUrl: string;
 
   constructor() {
-    this.apiKey = mistralConfig.apiKey || "";
-    this.baseUrl = mistralConfig.baseUrl || "https://api.mistral.ai/v1";
+    this.apiKey = mistralConfig.apiKey;
+    this.baseUrl = mistralConfig.baseUrl;
   }
 
   /**

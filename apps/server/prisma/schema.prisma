@@ -9,6 +9,9 @@ generator client {
 
 enum DrawingStatus {
   UPLOADED
+  OCR_PROCESSING
+  OCR_COMPLETED
+  OCR_FAILED
   PARSING
   PARSED
   FAILED

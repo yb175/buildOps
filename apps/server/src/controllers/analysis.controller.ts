@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { PipelineService } from "../services/pipeline.service";
+import { NotFoundError } from "../errors/not-found.error";
+import { logger } from "../utils/logger";
 
 export class AnalysisController {
   private pipelineService: PipelineService;
@@ -24,11 +26,12 @@ export class AnalysisController {
         ocrOutput: result.ocrOutput,
       });
     } catch (error) {
+      if (error instanceof NotFoundError) {
+        return res.status(404).json({ error: error.message });
+      }
       if (error instanceof Error) {
-        if (error.message === "Drawing not found") {
-          return res.status(404).json({ error: "Drawing not found" });
-        }
-        return res.status(500).json({ error: error.message });
+        logger.error(`[AnalysisController] Error during analysis for drawing: ${req.params.id}`, error);
+        return res.status(500).json({ error: "Unexpected server error during analysis." });
       }
       next(error);
     }

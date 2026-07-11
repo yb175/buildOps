@@ -1,6 +1,6 @@
 // DrawingRepository handles persistence operations for construction drawings.
 import { prisma } from "../config/prisma";
-import { Drawing, Discipline } from "@prisma/client";
+import { Drawing, Discipline, DrawingStatus } from "@prisma/client";
 
 export class DrawingRepository {
   async findByHash(hash: string): Promise<Drawing | null> {
@@ -34,10 +34,20 @@ export class DrawingRepository {
     });
   }
 
-  async updateOcrOutput(id: string, ocrOutput: string): Promise<Drawing> {
+  async updateOcrOutput(id: string, ocrOutput: string | null, status?: DrawingStatus): Promise<Drawing> {
     return prisma.drawing.update({
       where: { id },
-      data: { ocrOutput },
+      data: {
+        ocrOutput,
+        ...(status ? { status } : {}),
+      },
+    });
+  }
+
+  async updateStatus(id: string, status: DrawingStatus): Promise<Drawing> {
+    return prisma.drawing.update({
+      where: { id },
+      data: { status },
     });
   }
 }

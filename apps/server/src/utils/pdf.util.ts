@@ -4,6 +4,7 @@ import { env } from "../config/env";
 /**
  * Downloads a PDF file from a given URL (e.g. Cloudinary) into a Buffer.
  * If Cloudinary credentials are set, it generates a signed private download URL.
+ * Times out after 15 seconds.
  */
 export const downloadPDF = async (url: string): Promise<Buffer> => {
   let downloadUrl = url;
@@ -43,8 +44,14 @@ export const downloadPDF = async (url: string): Promise<Buffer> => {
     return Buffer.from("%PDF-1.4 mock content");
   }
 
+  // Create AbortController with 15s deadline timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
   try {
-    const response = await fetch(downloadUrl);
+    const response = await fetch(downloadUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
       if (process.env.NODE_ENV !== "production") {
         console.warn(`[pdf.util] PDF download failed with status ${response.status} for URL: ${downloadUrl}. Falling back to mock PDF content.`);
@@ -54,7 +61,13 @@ export const downloadPDF = async (url: string): Promise<Buffer> => {
     }
     const arrayBuffer = await response.arrayBuffer();
     return Buffer.from(arrayBuffer);
-  } catch (error) {
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+
+    if (error.name === "AbortError") {
+      throw new Error("Cloudinary download failure: Download timed out after 15 seconds");
+    }
+
     if (process.env.NODE_ENV !== "production") {
       console.warn(`[pdf.util] PDF download error: ${error instanceof Error ? error.message : String(error)}. Falling back to mock PDF content.`);
       return Buffer.from("%PDF-1.4 mock content");

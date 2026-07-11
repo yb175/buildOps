@@ -1,13 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { MistralProvider } from "../../providers/mistral.provider";
-import { mistralConfig } from "../../config/mistral";
 
 describe("MistralProvider unit tests", () => {
   let provider: MistralProvider;
 
   beforeEach(() => {
     vi.stubEnv("NODE_ENV", "test");
-    mistralConfig.apiKey = "mock-api-key";
+    vi.stubEnv("MISTRAL_API_KEY", "mock-api-key");
     provider = new MistralProvider();
   });
 
@@ -81,7 +80,7 @@ describe("MistralProvider unit tests", () => {
   });
 
   it("should fail in any environment if API key is missing", async () => {
-    mistralConfig.apiKey = ""; // Simulate missing API key
+    vi.stubEnv("MISTRAL_API_KEY", ""); // Simulate missing API key
     const emptyKeyProvider = new MistralProvider();
 
     const buffer = Buffer.from("sample");

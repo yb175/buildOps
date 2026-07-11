@@ -108,7 +108,7 @@ describe("analysis.routes integration test", () => {
     const response = await request(app).post(`/drawings/${createdDrawingId}/analyze`);
 
     expect(response.status).toBe(500);
-    expect(response.body.error).toContain("Cloudinary download failure");
+    expect(response.body.error).toContain("Unexpected server error during analysis.");
   });
 
   it("should return 500 if Mistral API fails", async () => {
@@ -118,6 +118,6 @@ describe("analysis.routes integration test", () => {
     const response = await request(app).post(`/drawings/${createdDrawingId}/analyze`);
 
     expect(response.status).toBe(500);
-    expect(response.body.error).toContain("Mistral API failure");
+    expect(response.body.error).toContain("Unexpected server error during analysis.");
   });
 });
