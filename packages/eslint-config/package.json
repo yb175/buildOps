@@ -1,0 +1,10 @@
+{
+  "name": "@buildops/eslint-config",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "main": "base.js",
+  "dependencies": {
+    "eslint-config-prettier": "^9.1.0"
+  }
+}

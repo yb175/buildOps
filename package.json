@@ -1,0 +1,23 @@
+{
+  "name": "buildops",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BuildOps Monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "start": "npm start --workspace=server",
+    "postbuild": "if [ \"$NODE_ENV\" = \"production\" ]; then npm prune --omit=dev; fi",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\""
+  },
+  "devDependencies": {
+    "turbo": "^2.0.4",
+    "prettier": "^3.3.2"
+  },
+  "packageManager": "npm@11.12.1"
+}
