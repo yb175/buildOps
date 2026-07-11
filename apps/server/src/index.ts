@@ -1,3 +1,4 @@
+import "./config/env";
 import { app, prisma } from "./app";
 
 const PORT = process.env.PORT || 3000;
@@ -19,3 +20,4 @@ const shutdown = async () => {
 
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
+

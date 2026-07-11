@@ -50,4 +50,22 @@ export class DrawingRepository {
       data: { status },
     });
   }
+
+  async updateParsedJson(
+    id: string,
+    parsedJson: any,
+    documentType: string,
+    classificationConfidence: number,
+    status?: DrawingStatus
+  ): Promise<Drawing> {
+    return prisma.drawing.update({
+      where: { id },
+      data: {
+        parsedJson,
+        documentType,
+        classificationConfidence,
+        ...(status ? { status } : {}),
+      } as any,
+    });
+  }
 }
