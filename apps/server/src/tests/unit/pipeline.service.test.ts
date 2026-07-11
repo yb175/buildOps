@@ -8,6 +8,7 @@ describe("PipelineService unit tests", () => {
   let mockClassificationService: any;
   let mockJsonAgentService: any;
   let mockDrawingRepository: any;
+  let mockConflictService: any;
 
   beforeEach(() => {
     vi.spyOn(pdfUtil, "downloadPDF").mockResolvedValue(Buffer.from("dummy-pdf-buffer"));
@@ -24,10 +25,14 @@ describe("PipelineService unit tests", () => {
       updateStatus: vi.fn(),
       updateParsedJson: vi.fn(),
     };
+    mockConflictService = {
+      detectAndPersistConflicts: vi.fn(),
+    };
     pipelineService = new PipelineService(
       mockClassificationService,
       mockJsonAgentService,
-      mockDrawingRepository
+      mockDrawingRepository,
+      mockConflictService
     );
   });
 
@@ -36,8 +41,9 @@ describe("PipelineService unit tests", () => {
   });
 
   it("should return cached parsedJson if present without executing pipeline", async () => {
+    const validId = "123e4567-e89b-12d3-a456-426614174000";
     const cachedDrawing = {
-      id: "drawing-1",
+      id: validId,
       ocrOutput: "cached-ocr",
       fileUrl: "http://example.com/drawing.pdf",
       fileName: "drawing.pdf",
@@ -45,18 +51,19 @@ describe("PipelineService unit tests", () => {
     };
     mockDrawingRepository.findById.mockResolvedValue(cachedDrawing);
 
-    const result = await pipelineService.analyzeDrawing("drawing-1");
+    const result = await pipelineService.analyzeDrawing(validId);
 
     expect(result).toEqual({
       parsedJson: cachedDrawing.parsedJson,
     });
-    expect(mockDrawingRepository.findById).toHaveBeenCalledWith("drawing-1");
+    expect(mockDrawingRepository.findById).toHaveBeenCalledWith(validId);
     expect(mockClassificationService.classify).not.toHaveBeenCalled();
   });
 
   it("should run full pipeline if parsedJson is missing", async () => {
+    const validId = "123e4567-e89b-12d3-a456-426614174000";
     const drawing = {
-      id: "drawing-1",
+      id: validId,
       ocrOutput: null,
       fileUrl: "http://example.com/drawing.pdf",
       fileName: "drawing.pdf",
@@ -71,21 +78,23 @@ describe("PipelineService unit tests", () => {
     const mockParsedJson = { schemaVersion: "1.0", metadata: {} };
     mockJsonAgentService.normalize.mockResolvedValue(mockParsedJson);
 
-    const result = await pipelineService.analyzeDrawing("drawing-1");
+    const result = await pipelineService.analyzeDrawing(validId);
 
     expect(result).toEqual({
       parsedJson: mockParsedJson,
     });
-    expect(mockDrawingRepository.findById).toHaveBeenCalledWith("drawing-1");
+    expect(mockDrawingRepository.findById).toHaveBeenCalledWith(validId);
     expect(mockClassificationService.classify).toHaveBeenCalledWith(expect.any(Buffer));
-    expect(mockDrawingRepository.updateStatus).toHaveBeenCalledWith("drawing-1", "PARSING");
+    expect(mockDrawingRepository.updateStatus).toHaveBeenCalledWith(validId, "PARSING");
+    expect(mockDrawingRepository.updateStatus).toHaveBeenCalledWith(validId, "PARSED");
     expect(mockJsonAgentService.normalize).toHaveBeenCalledWith(expect.any(Buffer), "ARCHITECTURAL_DRAWING", "application/pdf");
     expect(mockDrawingRepository.updateParsedJson).toHaveBeenCalledWith(
-      "drawing-1",
+      validId,
       mockParsedJson,
       "ARCHITECTURAL_DRAWING",
       0.99,
-      "PARSED"
+      "PARSING"
     );
+    expect(mockConflictService.detectAndPersistConflicts).toHaveBeenCalledWith(validId);
   });
 });

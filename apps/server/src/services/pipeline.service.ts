@@ -1,6 +1,7 @@
 import { ClassificationService } from "./classification.service";
 import { JSONAgentService } from "./json-agent.service";
 import { DrawingRepository } from "../repositories/drawing.repository";
+import { ConflictService } from "./conflict.service";
 import { UnsupportedDocumentError } from "../errors/unsupported-document.error";
 import { NotFoundError } from "../errors/not-found.error";
 import { downloadPDF } from "../utils/pdf.util";
@@ -11,15 +12,18 @@ export class PipelineService {
   private classificationService: ClassificationService;
   private jsonAgentService: JSONAgentService;
   private drawingRepository: DrawingRepository;
+  private conflictService: ConflictService;
 
   constructor(
     classificationService = new ClassificationService(),
     jsonAgentService = new JSONAgentService(),
-    drawingRepository = new DrawingRepository()
+    drawingRepository = new DrawingRepository(),
+    conflictService = new ConflictService()
   ) {
     this.classificationService = classificationService;
     this.jsonAgentService = jsonAgentService;
     this.drawingRepository = drawingRepository;
+    this.conflictService = conflictService;
   }
 
   /**
@@ -87,15 +91,28 @@ export class PipelineService {
       // 6. Multi-agent Normalization & Validation Stage
       const parsedDrawing = await this.jsonAgentService.normalize(extractionInput, classification.documentType, mimeType);
 
-      // 6. Persist Parsed JSON and update status to PARSED
+      // 6. Persist Parsed JSON and update status to PARSING
       logger.log(`[PipelineService] Persist Parsed JSON for drawingId: ${drawingId}`);
       await this.drawingRepository.updateParsedJson(
         drawingId,
         parsedDrawing,
         classification.documentType,
         classification.confidence,
-        "PARSED"
+        "PARSING"
       );
+
+      // 7. Auto-detect and persist conflicts
+      logger.log(`[PipelineService] Auto-detecting conflicts for drawingId: ${drawingId}`);
+      try {
+        await this.conflictService.detectAndPersistConflicts(drawingId);
+        logger.log(`[PipelineService] Successfully detected and persisted conflicts for drawingId: ${drawingId}`);
+      } catch (conflictError) {
+        logger.error(`[PipelineService] Error during auto-detecting conflicts for drawingId: ${drawingId}`, conflictError);
+        throw conflictError;
+      }
+
+      // 8. Update status to PARSED now that everything is done
+      await this.drawingRepository.updateStatus(drawingId, "PARSED");
 
       logger.log(`[PipelineService] Analysis pipeline completed successfully for drawingId: ${drawingId}`);
       return { parsedJson: parsedDrawing };

@@ -53,13 +53,33 @@ model Drawing {
   @@map("drawings")
 }
 
-model Conflict {
-  id        String   @id @default(uuid()) @db.Uuid
-  drawingId String   @map("drawing_id") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp
+enum ConflictCategory {
+  SEMANTIC
+  GEOMETRY
+  DISCIPLINE
+}
 
-  drawing   Drawing  @relation(fields: [drawingId], references: [id])
-  rfis      Rfi[]
+enum ConflictSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model Conflict {
+  id             String           @id @default(uuid()) @db.Uuid
+  drawingId      String           @map("drawing_id") @db.Uuid
+  category       ConflictCategory
+  severity       ConflictSeverity
+  title          String           @db.VarChar
+  description    String           @db.Text
+  entityA        String           @db.VarChar
+  entityB        String?          @db.VarChar
+  recommendation String           @db.Text
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamp
+
+  drawing        Drawing          @relation(fields: [drawingId], references: [id])
+  rfis           Rfi[]
 
   @@map("conflicts")
 }
@@ -72,7 +92,7 @@ model Rfi {
   status     RfiStatus?
   createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamp
 
-  conflict   Conflict   @relation(fields: [conflictId], references: [id])
+  conflict   Conflict   @relation(fields: [conflictId], references: [id], onDelete: Cascade)
 
   @@map("rfis")
 }
