@@ -74,12 +74,14 @@ app.get("/entries", async (_req, res) => {
 import drawingRoutes from "./routes/drawing.routes";
 import analysisRoutes from "./routes/analysis.routes";
 import conflictRoutes from "./routes/conflict.routes";
+import rfiRoutes from "./routes/rfi.routes";
 import { errorHandler } from "./middleware/error.middleware";
 
 // Mount API routes
 app.use("/drawings", drawingRoutes);
 app.use("/drawings", analysisRoutes);
 app.use("/drawings", conflictRoutes);
+app.use("/drawings", rfiRoutes);
 
 // Register global error handler middleware
 app.use(errorHandler);
