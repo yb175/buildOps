@@ -7,8 +7,66 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model SystemLog {
-  id        Int      @id @default(autoincrement())
-  message   String
-  createdAt DateTime @default(now())
+enum DrawingStatus {
+  UPLOADED
+  PARSING
+  PARSED
+  FAILED
+}
+
+enum Discipline {
+  ARCHITECTURAL
+  STRUCTURAL
+  MECHANICAL
+  ELECTRICAL
+  PLUMBING
+  FIRE
+  INTERIOR
+  UNKNOWN
+}
+
+enum RfiStatus {
+  GENERATED
+  REVIEWED
+  SENT
+}
+
+model Drawing {
+  id         String         @id @default(uuid()) @db.Uuid
+  hash       String         @unique @db.VarChar(64)
+  fileName   String?        @map("file_name") @db.VarChar
+  fileUrl    String?        @map("file_url") @db.Text
+  publicId   String?        @map("public_id") @db.VarChar
+  discipline Discipline?
+  status     DrawingStatus?
+  parsedJson Json?          @map("parsed_json")
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamp
+
+  conflicts  Conflict[]
+
+  @@map("drawings")
+}
+
+model Conflict {
+  id        String   @id @default(uuid()) @db.Uuid
+  drawingId String   @map("drawing_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp
+
+  drawing   Drawing  @relation(fields: [drawingId], references: [id])
+  rfis      Rfi[]
+
+  @@map("conflicts")
+}
+
+model Rfi {
+  id         String     @id @default(uuid()) @db.Uuid
+  conflictId String     @map("conflict_id") @db.Uuid
+  title      String?    @db.VarChar
+  draft      String?    @db.Text
+  status     RfiStatus?
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamp
+
+  conflict   Conflict   @relation(fields: [conflictId], references: [id])
+
+  @@map("rfis")
 }
