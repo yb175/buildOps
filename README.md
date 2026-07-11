@@ -120,18 +120,3 @@ Boot both the frontend client and backend server concurrently:
 ```bash
 npm run dev
 ```
-
----
-
-## 🔒 API Endpoints & Protection
-
-| Endpoint | Method | Description | Auth Required |
-| :--- | :--- | :--- | :--- |
-| `/drawings/projects` | `GET` | Fetches aggregated project lists | No |
-| `/drawings/projects/:projectName` | `GET` | Returns project drawings & RFIs details | No |
-| `/drawings` | `POST` | Uploads and registers a new drawing sheet | No |
-| `/drawings/:id/analyze` | `POST` | Triggers document classification & intake | No |
-| `/drawings/:id/conflicts` | `POST` | Triggers spatial conflict checks | No |
-| `/drawings/:id/rfis` | `POST` | Automatically generates RFI drafts | No |
-| `/drawings/:id/rfis/:rfiId` | `PUT` | Updates RFI details or changes status | No |
-| `/drawings/:id` | `DELETE` | Removes a drawing sheet and its dependencies | **Yes** (Bearer Token) |
