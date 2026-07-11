@@ -1,432 +1,428 @@
-import { useState, useEffect } from "react";
-import { Button } from "@buildops/ui";
-import type { HealthResponse } from "@buildops/shared";
+import React, { useState, useEffect } from "react";
+import { Sidebar } from "./components/Sidebar";
+import { Header } from "./components/Header";
+import { ProjectsDashboard } from "./components/ProjectsDashboard";
+import { ProjectOverview } from "./components/ProjectOverview";
+import { DrawingUpload } from "./components/DrawingUpload";
+import { PipelineProgress } from "./components/PipelineProgress";
+import { FindingsReview } from "./components/FindingsReview";
+import { RfiList } from "./components/RfiList";
+import { RfiModal } from "./components/RfiModal";
+import type { Project, Drawing, Conflict, Rfi, ProjectDetails } from "./types";
 
-interface SystemLog {
-  id: number;
-  message: string;
-  createdAt: string;
-}
+export default function App() {
+  const [currentView, setCurrentView] = useState<"projects" | "overview" | "upload" | "pipeline" | "findings" | "rfis">("projects");
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string>("500 Gaj Residence");
+  const [projectDetails, setProjectDetails] = useState<ProjectDetails | null>(null);
+  
+  // Active states for drawing review
+  const [activeDrawing, setActiveDrawing] = useState<Drawing | null>(null);
+  const [conflicts, setConflicts] = useState<Conflict[]>([]);
+  const [rfis, setRfis] = useState<Rfi[]>([]);
+  const [selectedConflictId, setSelectedConflictId] = useState<string | null>(null);
+  const [filterSeverity, setFilterSeverity] = useState<"ALL" | "HIGH" | "MEDIUM" | "LOW">("ALL");
 
-function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [loadingHealth, setLoadingHealth] = useState(true);
-  const [logs, setLogs] = useState<SystemLog[]>([]);
-  const [newLogMessage, setNewLogMessage] = useState("");
-  const [submittingLog, setSubmittingLog] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // RFI creation state
+  const [showRfiModal, setShowRfiModal] = useState(false);
+  const [rfiSubject, setRfiSubject] = useState("");
+  const [rfiQuestion, setRfiQuestion] = useState("");
+  const [rfiRecommendation, setRfiRecommendation] = useState("");
+
+  // Upload drawing state
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadDiscipline, setUploadDiscipline] = useState("ARCHITECTURAL");
+  const [uploadDrawingNo, setUploadDrawingNo] = useState("");
+  const [uploadRevision, setUploadRevision] = useState("Rev 0");
+  const [uploadPreparedBy, setUploadPreparedBy] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Pipeline simulation state
+  const [pipelineDrawingName, setPipelineDrawingName] = useState("");
+  const [pipelineStep, setPipelineStep] = useState(1);
+  const [pipelineProgress, setPipelineProgress] = useState(0);
+  const [pipelineLogs, setPipelineLogs] = useState<string[]>([]);
+  const [pipelineError, setPipelineError] = useState<string | null>(null);
+
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [projectsError, setProjectsError] = useState<string | null>(null);
+  const pipelineAbortedRef = React.useRef(false);
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-  const fetchHealth = async () => {
-    setLoadingHealth(true);
-    setError(null);
+  // Fetch all projects for the dashboard
+  const fetchProjects = async () => {
+    setProjectsLoading(true);
+    setProjectsError(null);
     try {
-      const res = await fetch(`${API_URL}/status`);
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-      const data = await res.json();
-      setHealth(data);
-    } catch (err) {
-      console.error("Health check fetch failed:", err);
-      setHealth(null);
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoadingHealth(false);
-    }
-  };
-
-  const fetchLogs = async () => {
-    try {
-      const res = await fetch(`${API_URL}/entries`);
+      const res = await fetch(`${API_URL}/drawings/projects`);
       if (res.ok) {
         const data = await res.json();
-        setLogs(data);
+        setProjects(data);
+      } else {
+        setProjectsError(`Server responded with status: ${res.status}`);
       }
-    } catch (err) {
-      console.error("Failed to fetch system logs:", err);
-    }
-  };
-
-  const handleAddLog = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newLogMessage.trim()) return;
-    setSubmittingLog(true);
-    try {
-      const res = await fetch(`${API_URL}/entries`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: newLogMessage }),
-      });
-      if (res.ok) {
-        setNewLogMessage("");
-        await fetchLogs();
-      }
-    } catch (err) {
-      console.error("Failed to add log:", err);
+    } catch (err: any) {
+      console.error("Failed to fetch projects:", err);
+      setProjectsError(err.message || "Failed to fetch projects");
     } finally {
-      setSubmittingLog(false);
+      setProjectsLoading(false);
     }
   };
 
+  // Fetch details for the selected project
+  const fetchProjectDetails = async (projectName: string) => {
+    try {
+      const res = await fetch(`${API_URL}/drawings/projects/${encodeURIComponent(projectName)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setProjectDetails(data);
+        if (data.rfis) {
+          setRfis(data.rfis);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch project details:", err);
+    }
+  };
+
+  // Fetch drawings and details when a drawing is selected for review
+  const selectDrawingForReview = async (drawing: Drawing) => {
+    setActiveDrawing(drawing);
+    setCurrentView("findings");
+    try {
+      // Fetch conflicts
+      const conflictsRes = await fetch(`${API_URL}/drawings/${drawing.id}/conflicts`);
+      if (conflictsRes.ok) {
+        const data = await conflictsRes.json();
+        setConflicts(data.conflicts || []);
+        if (data.conflicts && data.conflicts.length > 0) {
+          setSelectedConflictId(data.conflicts[0].id);
+        } else {
+          setSelectedConflictId(null);
+        }
+      }
+
+      // Fetch RFIs
+      const rfisRes = await fetch(`${API_URL}/drawings/${drawing.id}/rfis`);
+      if (rfisRes.ok) {
+        const data = await rfisRes.json();
+        setRfis(data.rfis || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch drawing review details:", err);
+    }
+  };
+
+  // Initial Load
   useEffect(() => {
-    // Fetch initial data asynchronously to avoid cascading renders
-    const initTimer = setTimeout(() => {
-      fetchHealth();
-      fetchLogs();
-    }, 0);
-
-    const interval = setInterval(() => {
-      fetchHealth();
-      fetchLogs();
-    }, 10000);
-
-    return () => {
-      clearTimeout(initTimer);
-      clearInterval(interval);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchProjects();
   }, []);
 
+  // Sync project details when selected project changes
+  useEffect(() => {
+    if (selectedProject) {
+      fetchProjectDetails(selectedProject);
+    }
+  }, [selectedProject]);
+
+  // Handle new drawing upload submit
+  const handleUploadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadFile) return;
+
+    setIsUploading(true);
+    setPipelineError(null);
+    setPipelineStep(1);
+    setPipelineProgress(0);
+    setPipelineLogs([]);
+
+    const formData = new FormData();
+    formData.append("file", uploadFile);
+    formData.append("discipline", uploadDiscipline);
+    formData.append("projectName", selectedProject);
+    formData.append("drawingNo", uploadDrawingNo);
+    formData.append("revision", uploadRevision);
+    formData.append("preparedBy", uploadPreparedBy);
+
+    try {
+      setPipelineLogs(prev => [...prev, `${new Date().toLocaleTimeString()} - Uploading drawing file: ${uploadFile.name}...`]);
+      const res = await fetch(`${API_URL}/drawings`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to upload drawing to server.");
+      }
+
+      const data = await res.json();
+      const newId = data.drawingId;
+      setPipelineDrawingName(uploadFile.name);
+      setCurrentView("pipeline");
+      
+      // Trigger pipeline processing loop
+      startPipelineProcessing(newId, uploadFile.name);
+    } catch (err: any) {
+      console.error(err);
+      setPipelineError(err.message || "Upload failed");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Cancel pipeline run gracefully
+  const handleCancelPipeline = () => {
+    pipelineAbortedRef.current = true;
+    setPipelineError(null);
+    setCurrentView("upload");
+  };
+
+  // Run GitLab-style analysis pipeline logs and API triggers
+  const startPipelineProcessing = async (id: string, _name: string) => {
+    pipelineAbortedRef.current = false;
+    const steps = [
+      { step: 1, progress: 20, log: "Document classification & intake verified." },
+      { step: 2, progress: 40, log: "Rendering drawing layers at high definition (300 DPI)." },
+      { step: 3, progress: 60, log: "Extracting spaces, doors, walls, and annotations." },
+      { step: 4, progress: 80, log: "Running cross-discipline conflict validations." },
+      { step: 5, progress: 100, log: "Analysis complete. Ready for constructability review." }
+    ];
+
+    for (let i = 0; i < steps.length; i++) {
+      if (pipelineAbortedRef.current) return;
+      await new Promise(r => setTimeout(r, 1500));
+      if (pipelineAbortedRef.current) return;
+
+      setPipelineStep(steps[i].step);
+      setPipelineProgress(steps[i].progress);
+      setPipelineLogs(prev => [...prev, `${new Date().toLocaleTimeString()} - ${steps[i].log}`]);
+
+      // Trigger backend endpoints during appropriate steps and stop on failure
+      try {
+        if (steps[i].step === 3) {
+          const res = await fetch(`${API_URL}/drawings/${id}/analyze`, { method: "POST" });
+          if (!res.ok) throw new Error(`Analysis step failed with status ${res.status}`);
+        }
+        if (steps[i].step === 4) {
+          const res = await fetch(`${API_URL}/drawings/${id}/conflicts`, { method: "POST" });
+          if (!res.ok) throw new Error(`Conflict validation step failed with status ${res.status}`);
+        }
+        if (steps[i].step === 5) {
+          const res = await fetch(`${API_URL}/drawings/${id}/rfis`, { method: "POST" });
+          if (!res.ok) throw new Error(`RFI generation step failed with status ${res.status}`);
+        }
+      } catch (err: any) {
+        console.error(err);
+        setPipelineError(err.message || "Pipeline execution failed");
+        return;
+      }
+    }
+
+    if (pipelineAbortedRef.current) return;
+    await new Promise(r => setTimeout(r, 1000));
+    if (pipelineAbortedRef.current) return;
+
+    try {
+      const res = await fetch(`${API_URL}/drawings/projects/${encodeURIComponent(selectedProject)}`);
+      if (res.ok) {
+        const details = await res.json();
+        setProjectDetails(details);
+        const matchingDrawing = details.drawings.find((d: Drawing) => d.id === id);
+        if (matchingDrawing) {
+          selectDrawingForReview(matchingDrawing);
+        } else {
+          setCurrentView("overview");
+        }
+      }
+    } catch (err) {
+      setCurrentView("overview");
+    }
+  };
+
+  // Open RFI Modal with prefilled values from selected conflict
+  const handleOpenRfiModal = (conflict: Conflict) => {
+    setRfiSubject(`RFI for conflict: ${conflict.title}`);
+    setRfiQuestion(`Regarding ${conflict.entityA}${conflict.entityB ? ` and ${conflict.entityB}` : ""}: ${conflict.description}`);
+    setRfiRecommendation(conflict.recommendation);
+    setShowRfiModal(true);
+  };
+
+  // Handle RFI Submit
+  const handleRfiSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeDrawing || !selectedConflictId) return;
+
+    const targetRfi = rfis.find(r => r.conflictId === selectedConflictId);
+    if (!targetRfi) {
+      console.warn("No generated RFI found for this conflict to update.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/drawings/${activeDrawing.id}/rfis/${targetRfi.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: rfiSubject,
+          question: rfiQuestion,
+          recommendation: rfiRecommendation,
+          status: "REVIEWED"
+        })
+      });
+      if (res.ok) {
+        const updatedRfi = await res.json();
+        setRfis(prev => prev.map(r => r.id === updatedRfi.id ? updatedRfi : r));
+        if (projectDetails) {
+          setProjectDetails({
+            ...projectDetails,
+            rfis: projectDetails.rfis.map(r => r.id === updatedRfi.id ? updatedRfi : r)
+          });
+        }
+      }
+      setShowRfiModal(false);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Resolve conflict locally
+  const handleResolveConflict = (id: string) => {
+    setConflicts(prev => prev.filter(c => c.id !== id));
+    if (selectedConflictId === id) {
+      setSelectedConflictId(null);
+    }
+  };
+
   return (
-    <div style={containerStyle}>
-      <header style={headerStyle}>
-        <div style={logoContainerStyle}>
-          <div style={logoBadgeStyle}>BO</div>
-          <h1 style={titleStyle}>BuildOps Monorepo</h1>
-        </div>
-        <div style={badgeStyle}>Environment: Development</div>
-      </header>
+    <div style={layoutContainerStyle}>
+      <Sidebar 
+        currentView={currentView} 
+        setCurrentView={(view) => {
+          setCurrentView(view);
+          if (view === "projects") {
+            fetchProjects();
+          }
+        }} 
+      />
 
-      <main style={gridStyle}>
-        {/* Status Card */}
-        <section style={cardStyle}>
-          <h2 style={cardTitleStyle}>System Health Status</h2>
-          <p style={cardDescStyle}>
-            Live connectivity check between Client, Express Server, and PostgreSQL Database.
-          </p>
+      <div style={mainContentContainerStyle}>
+        <Header 
+          currentView={currentView}
+          selectedProject={selectedProject}
+          activeDrawingFileName={activeDrawing?.fileName}
+          setCurrentView={setCurrentView}
+        />
 
-          <div style={statusListStyle}>
-            <div style={statusItemStyle}>
-              <span>Client Status</span>
-              <span style={{ ...indicatorStyle, ...indicatorActiveStyle }}>Active</span>
+        {/* View Router */}
+        {currentView === "projects" && (
+          projectsLoading ? (
+            <div style={{padding: 24, textAlign: "center", color: "var(--text-secondary)"}}>Loading projects...</div>
+          ) : projectsError ? (
+            <div style={{padding: 24, textAlign: "center", color: "var(--danger-red)"}}>
+              <p>Error: {projectsError}</p>
+              <button className="btn btn-outline" onClick={fetchProjects}>Retry</button>
             </div>
-
-            <div style={statusItemStyle}>
-              <span>Express Server</span>
-              {loadingHealth ? (
-                <span style={indicatorPendingStyle}>Checking...</span>
-              ) : health?.status === "ok" ? (
-                <span style={{ ...indicatorStyle, ...indicatorActiveStyle }}>Online</span>
-              ) : (
-                <span style={{ ...indicatorStyle, ...indicatorErrorStyle }}>Offline</span>
-              )}
-            </div>
-
-            <div style={statusItemStyle}>
-              <span>PostgreSQL Database</span>
-              {loadingHealth ? (
-                <span style={indicatorPendingStyle}>Checking...</span>
-              ) : health?.database === "connected" ? (
-                <span style={{ ...indicatorStyle, ...indicatorActiveStyle }}>Connected</span>
-              ) : (
-                <span style={{ ...indicatorStyle, ...indicatorErrorStyle }}>Disconnected</span>
-              )}
-            </div>
-          </div>
-
-          {health && (
-            <div style={detailsBoxStyle}>
-              <div style={detailRowStyle}>
-                <strong>Server Uptime:</strong> <span>{Math.round(health.uptime)}s</span>
-              </div>
-              <div style={detailRowStyle}>
-                <strong>Checked At:</strong>{" "}
-                <span>{new Date(health.timestamp).toLocaleTimeString()}</span>
-              </div>
-            </div>
-          )}
-
-          {error && <div style={errorBoxStyle}>⚠️ Connection Error: {error}</div>}
-
-          <div style={{ marginTop: "1.5rem" }}>
-            <Button onClick={fetchHealth} disabled={loadingHealth}>
-              {loadingHealth ? "Refreshing..." : "Trigger Manual Health Check"}
-            </Button>
-          </div>
-        </section>
-
-        {/* Database Logs Card (E2E verification) */}
-        <section style={cardStyle}>
-          <h2 style={cardTitleStyle}>Database E2E Check</h2>
-          <p style={cardDescStyle}>
-            Insert records directly into PostgreSQL to verify read/write database functionality.
-          </p>
-
-          <form onSubmit={handleAddLog} style={formStyle}>
-            <input
-              type="text"
-              value={newLogMessage}
-              onChange={(e) => setNewLogMessage(e.target.value)}
-              placeholder="Enter a test log message..."
-              style={inputStyle}
-              disabled={submittingLog}
+          ) : (
+            <ProjectsDashboard 
+              projects={projects}
+              onSelectProject={(projectName) => {
+                setSelectedProject(projectName);
+                setCurrentView("overview");
+              }}
+              onNewProjectDrawing={() => {
+                setSelectedProject("500 Gaj Residence");
+                setCurrentView("upload");
+              }}
             />
-            <Button
-              variant="secondary"
-              type="submit"
-              disabled={submittingLog || !newLogMessage.trim()}
-            >
-              {submittingLog ? "Saving..." : "Write to DB"}
-            </Button>
-          </form>
+          )
+        )}
 
-          <h3 style={sectionSubtitleStyle}>Recent Database Entries</h3>
-          <div style={logsContainerStyle}>
-            {logs.length === 0 ? (
-              <p style={emptyLogsStyle}>No logs created yet. Try inserting one above!</p>
-            ) : (
-              logs.map((log) => (
-                <div key={log.id} style={logItemStyle}>
-                  <span style={logMessageStyle}>{log.message}</span>
-                  <span style={logTimeStyle}>{new Date(log.createdAt).toLocaleTimeString()}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-      </main>
+        {currentView === "overview" && projectDetails && (
+          <ProjectOverview 
+            projectDetails={projectDetails}
+            onUploadDrawingClick={() => setCurrentView("upload")}
+            onViewDrawingReview={(drawing) => selectDrawingForReview(drawing)}
+          />
+        )}
 
-      <footer style={footerStyle}>
-        <p>
-          BuildOps Monorepo Developer Dashboard • React 19 • Express 4 • Prisma 5 • Docker
-          PostgreSQL
-        </p>
-      </footer>
+        {currentView === "upload" && (
+          <DrawingUpload 
+            selectedProject={selectedProject}
+            uploadFile={uploadFile}
+            setUploadFile={setUploadFile}
+            uploadDiscipline={uploadDiscipline}
+            setUploadDiscipline={setUploadDiscipline}
+            uploadDrawingNo={uploadDrawingNo}
+            setUploadDrawingNo={setUploadDrawingNo}
+            uploadRevision={uploadRevision}
+            setUploadRevision={setUploadRevision}
+            uploadPreparedBy={uploadPreparedBy}
+            setUploadPreparedBy={setUploadPreparedBy}
+            isUploading={isUploading}
+            onSubmit={handleUploadSubmit}
+            onCancel={() => setCurrentView("overview")}
+          />
+        )}
+
+        {currentView === "pipeline" && (
+          <PipelineProgress 
+            pipelineDrawingName={pipelineDrawingName}
+            uploadDiscipline={uploadDiscipline}
+            uploadRevision={uploadRevision}
+            pipelineProgress={pipelineProgress}
+            pipelineStep={pipelineStep}
+            pipelineLogs={pipelineLogs}
+            pipelineError={pipelineError}
+            onCancel={handleCancelPipeline}
+          />
+        )}
+
+        {currentView === "findings" && activeDrawing && (
+          <FindingsReview 
+            activeDrawing={activeDrawing}
+            conflicts={conflicts}
+            selectedConflictId={selectedConflictId}
+            setSelectedConflictId={setSelectedConflictId}
+            filterSeverity={filterSeverity}
+            setFilterSeverity={setFilterSeverity}
+            onOpenRfiModal={handleOpenRfiModal}
+            onResolveConflict={handleResolveConflict}
+            onApproveDrawing={() => setCurrentView("overview")}
+          />
+        )}
+
+        {currentView === "rfis" && (
+          <RfiList rfis={rfis} />
+        )}
+      </div>
+
+      <RfiModal 
+        show={showRfiModal}
+        rfiSubject={rfiSubject}
+        setRfiSubject={setRfiSubject}
+        rfiQuestion={rfiQuestion}
+        setRfiQuestion={setRfiQuestion}
+        rfiRecommendation={rfiRecommendation}
+        setRfiRecommendation={setRfiRecommendation}
+        onClose={() => setShowRfiModal(false)}
+        onSubmit={handleRfiSubmit}
+      />
     </div>
   );
 }
 
-// Inline CSS for premium styling (independent of global CSS changes)
-const containerStyle: React.CSSProperties = {
-  fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
-  backgroundColor: "#0b0f19",
-  color: "#f8fafc",
+const layoutContainerStyle: React.CSSProperties = {
+  display: "flex",
   minHeight: "100vh",
-  padding: "2rem",
+  backgroundColor: "var(--bg)",
+  color: "var(--text-primary)",
+};
+
+const mainContentContainerStyle: React.CSSProperties = {
+  flex: 1,
   display: "flex",
   flexDirection: "column",
-  boxSizing: "border-box",
-};
-
-const headerStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  borderBottom: "1px solid #1e293b",
-  paddingBottom: "1.5rem",
-  marginBottom: "2rem",
-};
-
-const logoContainerStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "1rem",
-};
-
-const logoBadgeStyle: React.CSSProperties = {
-  backgroundColor: "#4f46e5",
-  color: "#ffffff",
-  fontWeight: "bold",
-  fontSize: "1.2rem",
-  padding: "0.5rem 0.8rem",
-  borderRadius: "8px",
-  letterSpacing: "1px",
-};
-
-const titleStyle: React.CSSProperties = {
-  fontSize: "1.8rem",
-  fontWeight: 700,
-  margin: 0,
-  color: "#ffffff",
-};
-
-const badgeStyle: React.CSSProperties = {
-  backgroundColor: "#1e293b",
-  color: "#94a3b8",
-  padding: "0.4rem 0.8rem",
-  borderRadius: "9999px",
-  fontSize: "0.85rem",
-  fontWeight: 500,
-};
-
-const gridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
-  gap: "2rem",
-  flexGrow: 1,
-};
-
-const cardStyle: React.CSSProperties = {
-  backgroundColor: "#111827",
-  border: "1px solid #1e293b",
-  borderRadius: "12px",
-  padding: "2rem",
-  boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.3)",
-  display: "flex",
-  flexDirection: "column",
-};
-
-const cardTitleStyle: React.CSSProperties = {
-  fontSize: "1.3rem",
-  fontWeight: 600,
-  margin: "0 0 0.5rem 0",
-  color: "#ffffff",
-};
-
-const cardDescStyle: React.CSSProperties = {
-  fontSize: "0.9rem",
-  color: "#94a3b8",
-  margin: "0 0 1.5rem 0",
-  lineHeight: 1.5,
-};
-
-const statusListStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "1rem",
-  marginBottom: "1.5rem",
-};
-
-const statusItemStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  padding: "0.85rem 1rem",
-  backgroundColor: "#1f2937",
-  borderRadius: "8px",
-  fontSize: "0.95rem",
-};
-
-const indicatorStyle: React.CSSProperties = {
-  fontWeight: 600,
-  padding: "0.25rem 0.6rem",
-  borderRadius: "6px",
-  fontSize: "0.8rem",
-  textTransform: "uppercase",
-};
-
-const indicatorActiveStyle: React.CSSProperties = {
-  backgroundColor: "rgba(16, 185, 129, 0.15)",
-  color: "#10b981",
-};
-
-const indicatorErrorStyle: React.CSSProperties = {
-  backgroundColor: "rgba(239, 68, 68, 0.15)",
-  color: "#ef4444",
-};
-
-const indicatorPendingStyle: React.CSSProperties = {
-  color: "#eab308",
-  fontSize: "0.9rem",
-};
-
-const detailsBoxStyle: React.CSSProperties = {
-  backgroundColor: "#1f2937",
-  border: "1px solid #374151",
-  borderRadius: "8px",
-  padding: "1rem",
-  fontSize: "0.85rem",
-  marginTop: "auto",
-};
-
-const detailRowStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  marginBottom: "0.5rem",
-};
-
-const errorBoxStyle: React.CSSProperties = {
-  backgroundColor: "rgba(239, 68, 68, 0.1)",
-  border: "1px solid rgba(239, 68, 68, 0.3)",
-  color: "#f87171",
-  borderRadius: "8px",
-  padding: "1rem",
-  fontSize: "0.85rem",
-  marginTop: "1rem",
-};
-
-const formStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "0.5rem",
-  marginBottom: "1.5rem",
-};
-
-const inputStyle: React.CSSProperties = {
-  flexGrow: 1,
-  backgroundColor: "#1f2937",
-  border: "1px solid #374151",
-  borderRadius: "8px",
-  padding: "0.75rem 1rem",
-  color: "#ffffff",
-  fontSize: "0.95rem",
-  outline: "none",
-};
-
-const sectionSubtitleStyle: React.CSSProperties = {
-  fontSize: "1rem",
-  fontWeight: 600,
-  color: "#e2e8f0",
-  margin: "0 0 0.75rem 0",
-};
-
-const logsContainerStyle: React.CSSProperties = {
-  flexGrow: 1,
-  backgroundColor: "#0b0f19",
-  border: "1px solid #1e293b",
-  borderRadius: "8px",
-  padding: "1rem",
+  height: "100vh",
   overflowY: "auto",
-  maxHeight: "220px",
-  display: "flex",
-  flexDirection: "column",
-  gap: "0.5rem",
 };
-
-const emptyLogsStyle: React.CSSProperties = {
-  fontSize: "0.85rem",
-  color: "#64748b",
-  textAlign: "center",
-  margin: "auto",
-};
-
-const logItemStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  padding: "0.5rem 0.75rem",
-  backgroundColor: "#111827",
-  borderRadius: "4px",
-  fontSize: "0.85rem",
-  borderLeft: "3px solid #4f46e5",
-};
-
-const logMessageStyle: React.CSSProperties = {
-  color: "#e2e8f0",
-};
-
-const logTimeStyle: React.CSSProperties = {
-  color: "#64748b",
-  fontSize: "0.75rem",
-};
-
-const footerStyle: React.CSSProperties = {
-  textAlign: "center",
-  paddingTop: "2rem",
-  borderTop: "1px solid #1e293b",
-  marginTop: "2rem",
-  color: "#64748b",
-  fontSize: "0.8rem",
-};
-
-export default App;

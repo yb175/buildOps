@@ -52,7 +52,7 @@ describe("drawing.routes integration test", () => {
       drawingId: "uuid-123",
       status: "UPLOADED",
     });
-    expect(mockHandleUpload).toHaveBeenCalledWith(expect.any(Buffer), "sample.pdf", "STRUCTURAL");
+    expect(mockHandleUpload).toHaveBeenCalledWith(expect.any(Buffer), "sample.pdf", "STRUCTURAL", undefined);
   });
 
   it("should return 200 with existing metadata if the drawing already exists (duplicate)", async () => {
