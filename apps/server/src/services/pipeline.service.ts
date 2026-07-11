@@ -47,30 +47,30 @@ export class PipelineService {
       throw new Error("Drawing has no file URL");
     }
 
-    // 2. Download drawing PDF
-    logger.log(`[PipelineService] Downloading PDF from Cloudinary URL: ${drawing.fileUrl}`);
-    const pdfBuffer = await downloadPDF(drawing.fileUrl);
-    logger.log(`[PipelineService] PDF Downloaded successfully (${pdfBuffer.length} bytes)`);
-
-    // 3. Document Classification Stage
-    const classification = await this.classificationService.classify(pdfBuffer);
-    if (!classification.isConstructionDrawing) {
-      logger.warn(
-        `[PipelineService] Unsupported document type for ${drawingId}: type=${classification.documentType}, confidence=${classification.confidence}.`
-      );
-      await this.drawingRepository.updateStatus(drawingId, "FAILED");
-      throw new UnsupportedDocumentError(
-        classification.documentType,
-        classification.confidence,
-        classification.reason
-      );
-    }
-    logger.log(`[PipelineService] Document Supported: ${classification.documentType}`);
-
-    // 4. Update status to PARSING
-    await this.drawingRepository.updateStatus(drawingId, "PARSING");
-
     try {
+      // 2. Download drawing PDF
+      logger.log(`[PipelineService] Downloading PDF from Cloudinary URL: ${drawing.fileUrl}`);
+      const pdfBuffer = await downloadPDF(drawing.fileUrl);
+      logger.log(`[PipelineService] PDF Downloaded successfully (${pdfBuffer.length} bytes)`);
+
+      // 3. Document Classification Stage
+      const classification = await this.classificationService.classify(pdfBuffer);
+      if (!classification.isConstructionDrawing) {
+        logger.warn(
+          `[PipelineService] Unsupported document type for ${drawingId}: type=${classification.documentType}, confidence=${classification.confidence}.`
+        );
+        await this.drawingRepository.updateStatus(drawingId, "FAILED");
+        throw new UnsupportedDocumentError(
+          classification.documentType,
+          classification.confidence,
+          classification.reason
+        );
+      }
+      logger.log(`[PipelineService] Document Supported: ${classification.documentType}`);
+
+      // 4. Update status to PARSING
+      await this.drawingRepository.updateStatus(drawingId, "PARSING");
+
       // 5. Render PDF → PNG pages at 300 DPI for higher quality extraction
       //    Falls back to raw PDF buffer if pdftoppm is not available.
       let extractionInput: Buffer | Buffer[] = pdfBuffer;

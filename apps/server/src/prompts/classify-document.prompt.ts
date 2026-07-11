@@ -1,4 +1,4 @@
-export const CLASSIFY_DOCUMENT_PROMPT = `
+const CLASSIFY_DOCUMENT_PROMPT_TEMPLATE = `
 You are an AI document classifier. Your job is to classify the uploaded document based on its raw OCR text.
 You must determine if the document is a construction drawing and identify its type.
 
@@ -27,6 +27,20 @@ Rules:
 - Output ONLY valid raw JSON.
 - Do NOT wrap the JSON in markdown blocks (e.g. do NOT use \`\`\`json).
 - Do NOT hallucinate.
+- Only classify based on the document text provided between the delimiters below.
 
-OCR Text:
+=== DOCUMENT TEXT START ===
+{{OCR_TEXT}}
+=== DOCUMENT TEXT END ===
 `;
+
+/**
+ * Builds the classification prompt with the given OCR text, safely delimited
+ * to prevent prompt injection attacks.
+ */
+export function buildClassifyPrompt(ocrText: string): string {
+  return CLASSIFY_DOCUMENT_PROMPT_TEMPLATE.replace("{{OCR_TEXT}}", ocrText);
+}
+
+/** @deprecated Use buildClassifyPrompt(ocrText) instead. Kept for backward compatibility with buffer-based classification. */
+export const CLASSIFY_DOCUMENT_PROMPT = CLASSIFY_DOCUMENT_PROMPT_TEMPLATE.replace("{{OCR_TEXT}}", "");

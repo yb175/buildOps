@@ -12,7 +12,7 @@ export class JSONAgentService {
 
   /**
    * Normalizes drawing content into a structured ParsedDrawing by running
-   * 6 specialized extraction agents in parallel (Gemini 2.5 Pro, temperature=0).
+   * 3 specialized extraction agents sequentially (RoomAgent, OpeningAgent, and DetailsAgent).
    *
    * @param input       Single PDF buffer, or array of PNG page buffers (300 DPI)
    * @param documentType  The classified document type (e.g. ARCHITECTURAL_DRAWING)

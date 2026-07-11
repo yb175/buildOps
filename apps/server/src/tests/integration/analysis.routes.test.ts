@@ -83,11 +83,13 @@ describe("analysis.routes integration test", () => {
       .post(`/drawings/${createdDrawingId}/analyze`);
 
     expect(response.status).toBe(200);
+    expect(response.body.parsedJson.schemaVersion).toBe("1.0");
 
     const updatedDrawing = await prisma.drawing.findUnique({
       where: { id: createdDrawingId },
     });
     expect((updatedDrawing as any)?.documentType).toBe("INTERIOR_DRAWING");
+    expect(updatedDrawing?.status).toBe("PARSED");
   });
 
   it("should return HTTP 422 if the document is classified as a RESUME", async () => {

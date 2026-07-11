@@ -1,18 +1,24 @@
 export interface Metadata {
-  drawingNumber?: string;
-  title?: string;
-  project?: string;
-  revision?: string;
-  scale?: string;
-  date?: string;
+  drawingNumber?: string | null;
+  title?: string | null;
+  project?: string | null;
+  revision?: string | null;
+  scale?: string | null;
+  date?: string | null;
+  discipline?: string | null;
 }
 
 export interface Room {
-  id?: string;
+  id?: string | null;
   name: string;
-  number?: string;
-  areaSquareFeet?: number;
-  dimensions?: string;
+  number?: string | null;
+  areaSquareFeet?: number | null;
+  dimensions?: string | null;
+}
+
+export interface GridLine {
+  label: string;
+  direction: "HORIZONTAL" | "VERTICAL" | "UNKNOWN" | string;
 }
 
 export interface StructuralElements {
@@ -21,6 +27,7 @@ export interface StructuralElements {
   beams: any[];
   slabs: any[];
   walls: any[];
+  gridLines: GridLine[];
 }
 
 export interface OpeningElements {
@@ -29,22 +36,22 @@ export interface OpeningElements {
 }
 
 export interface Fixture {
-  id?: string;
+  id?: string | null;
   name: string;
-  type?: string;
-  location?: string;
+  type?: string | null;
+  location?: string | null;
 }
 
 export interface Annotation {
-  id?: string;
+  id?: string | null;
   text: string;
-  location?: string;
+  location?: string | null;
 }
 
 export interface Schedule {
-  id?: string;
+  id?: string | null;
   name: string;
-  type?: string;
+  type?: string | null;
   data: Record<string, any>[];
 }
 

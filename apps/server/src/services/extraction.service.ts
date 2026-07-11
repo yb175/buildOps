@@ -11,7 +11,7 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  * MVP 3-Agent Extraction Pipeline (temperature=0)
  *
  * Runs 3 focused agents sequentially with short delays to avoid rate limit (429) spikes.
- * Automatically retries 429 Resource Exhausted errors with exponential backoff.
+ * Relying on GeminiProvider internal retries for transient/429 errors.
  */
 export class ExtractionService {
   private gemini: GeminiProvider;
@@ -29,27 +29,55 @@ export class ExtractionService {
       `[ExtractionService] Starting robust sequential extraction for type=${documentType}`
     );
 
+    let roomSucceeded = false;
+    let openingSucceeded = false;
+    let detailsSucceeded = false;
+    let lastError: any = null;
+
     // 1. Room Agent
-    const rooms = await this.runAgentWithRetry("RoomAgent", ROOM_AGENT_PROMPT, fileBuffers, mimeType).catch((e) => {
-      logger.error("[ExtractionService] RoomAgent failed after retries", e);
-      return { rooms: [] };
-    });
+    const rooms = await this.runAgentWithRetry("RoomAgent", ROOM_AGENT_PROMPT, fileBuffers, mimeType)
+      .then((res) => {
+        roomSucceeded = true;
+        return res;
+      })
+      .catch((e) => {
+        logger.error("[ExtractionService] RoomAgent failed", e);
+        lastError = e;
+        return { rooms: [] };
+      });
 
     await delay(1000);
 
     // 2. Opening Agent
-    const openings = await this.runAgentWithRetry("OpeningAgent", OPENING_AGENT_PROMPT, fileBuffers, mimeType).catch((e) => {
-      logger.error("[ExtractionService] OpeningAgent failed after retries", e);
-      return { doors: [], windows: [] };
-    });
+    const openings = await this.runAgentWithRetry("OpeningAgent", OPENING_AGENT_PROMPT, fileBuffers, mimeType)
+      .then((res) => {
+        openingSucceeded = true;
+        return res;
+      })
+      .catch((e) => {
+        logger.error("[ExtractionService] OpeningAgent failed", e);
+        lastError = e;
+        return { doors: [], windows: [] };
+      });
 
     await delay(1000);
 
     // 3. Details Agent
-    const details = await this.runAgentWithRetry("DetailsAgent", DETAILS_AGENT_PROMPT, fileBuffers, mimeType).catch((e) => {
-      logger.error("[ExtractionService] DetailsAgent failed after retries", e);
-      return { metadata: {}, structural: {}, fixtures: [], notes: [], callouts: [] };
-    });
+    const details = await this.runAgentWithRetry("DetailsAgent", DETAILS_AGENT_PROMPT, fileBuffers, mimeType)
+      .then((res) => {
+        detailsSucceeded = true;
+        return res;
+      })
+      .catch((e) => {
+        logger.error("[ExtractionService] DetailsAgent failed", e);
+        lastError = e;
+        return { metadata: {}, structural: {}, fixtures: [], notes: [], callouts: [] };
+      });
+
+    // If ALL agents fail, throw the last error so PipelineService marks it as FAILED
+    if (!roomSucceeded && !openingSucceeded && !detailsSucceeded) {
+      throw lastError || new Error("All extraction agents failed");
+    }
 
     logger.log("[ExtractionService] Sequential extraction complete. Merging...");
 
@@ -63,6 +91,7 @@ export class ExtractionService {
         revision: details.metadata?.revision ?? null,
         scale: details.metadata?.scale ?? null,
         date: details.metadata?.date ?? null,
+        discipline: details.metadata?.discipline ?? null,
       },
 
       rooms: Array.isArray(rooms.rooms) ? rooms.rooms : [],
@@ -73,6 +102,7 @@ export class ExtractionService {
         beams: details.structural?.beams ?? [],
         slabs: details.structural?.slabs ?? [],
         foundations: details.structural?.foundations ?? [],
+        gridLines: details.structural?.gridLines ?? [],
       },
 
       openings: {
@@ -82,9 +112,9 @@ export class ExtractionService {
 
       fixtures: Array.isArray(details.fixtures) ? details.fixtures : [],
 
-      annotations: [
-        ...((details.callouts as string[]) ?? []).map((text: string) => ({ text })),
-      ],
+      annotations: Array.isArray(details.callouts)
+        ? details.callouts.map((text: any) => ({ text: String(text) }))
+        : [],
 
       schedules: [],
 
@@ -108,28 +138,11 @@ export class ExtractionService {
     agentName: string,
     prompt: string,
     fileBuffers: Buffer | Buffer[],
-    mimeType: string,
-    retries = 3,
-    backoffMs = 2000
+    mimeType: string
   ): Promise<any> {
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      try {
-        logger.log(`[ExtractionService] ${agentName} started (attempt ${attempt}/${retries})`);
-        const result = await this.gemini.generateJson<any>(prompt, null, fileBuffers, mimeType);
-        logger.log(`[ExtractionService] ${agentName} completed`);
-        return result;
-      } catch (error: any) {
-        const isRateLimit = error.message?.includes("429") || error.message?.includes("RESOURCE_EXHAUSTED");
-        if (isRateLimit && attempt < retries) {
-          logger.warn(
-            `[ExtractionService] ${agentName} hit rate limit (429). Retrying in ${backoffMs}ms...`
-          );
-          await delay(backoffMs);
-          backoffMs *= 2; // exponential backoff
-          continue;
-        }
-        throw error;
-      }
-    }
+    logger.log(`[ExtractionService] ${agentName} started`);
+    const result = await this.gemini.generateJson<any>(prompt, null, fileBuffers, mimeType);
+    logger.log(`[ExtractionService] ${agentName} completed`);
+    return result;
   }
 }

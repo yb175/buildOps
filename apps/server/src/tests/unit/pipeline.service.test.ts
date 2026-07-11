@@ -78,6 +78,7 @@ describe("PipelineService unit tests", () => {
     });
     expect(mockDrawingRepository.findById).toHaveBeenCalledWith("drawing-1");
     expect(mockClassificationService.classify).toHaveBeenCalledWith(expect.any(Buffer));
+    expect(mockDrawingRepository.updateStatus).toHaveBeenCalledWith("drawing-1", "PARSING");
     expect(mockJsonAgentService.normalize).toHaveBeenCalledWith(expect.any(Buffer), "ARCHITECTURAL_DRAWING", "application/pdf");
     expect(mockDrawingRepository.updateParsedJson).toHaveBeenCalledWith(
       "drawing-1",

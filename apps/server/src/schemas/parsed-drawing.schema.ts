@@ -21,6 +21,15 @@ export function validateParsedDrawing(data: any): ParsedDrawing {
     throw new Error("rooms must be an array");
   }
 
+  for (const room of data.rooms) {
+    if (room === null || typeof room !== "object") {
+      throw new Error("rooms elements must be objects");
+    }
+    if (typeof room.name !== "string") {
+      throw new Error("rooms[].name must be a string");
+    }
+  }
+
   if (typeof data.structural !== "object" || data.structural === null) {
     throw new Error("structural must be an object");
   }
@@ -29,6 +38,22 @@ export function validateParsedDrawing(data: any): ParsedDrawing {
   for (const field of structuralFields) {
     if (!Array.isArray(data.structural[field])) {
       throw new Error(`structural.${field} must be an array`);
+    }
+    for (const el of data.structural[field]) {
+      if (el === null || typeof el !== "object") {
+        throw new Error(`structural.${field} elements must be objects`);
+      }
+    }
+  }
+
+  if (data.structural.gridLines !== undefined) {
+    if (!Array.isArray(data.structural.gridLines)) {
+      throw new Error("structural.gridLines must be an array");
+    }
+    for (const el of data.structural.gridLines) {
+      if (el === null || typeof el !== "object") {
+        throw new Error("structural.gridLines elements must be objects");
+      }
     }
   }
 
@@ -41,18 +66,53 @@ export function validateParsedDrawing(data: any): ParsedDrawing {
     if (!Array.isArray(data.openings[field])) {
       throw new Error(`openings.${field} must be an array`);
     }
+    for (const el of data.openings[field]) {
+      if (el === null || typeof el !== "object") {
+        throw new Error(`openings.${field} elements must be objects`);
+      }
+    }
   }
 
   if (!Array.isArray(data.fixtures)) {
     throw new Error("fixtures must be an array");
   }
 
+  for (const fixture of data.fixtures) {
+    if (fixture === null || typeof fixture !== "object") {
+      throw new Error("fixtures elements must be objects");
+    }
+    if (typeof fixture.name !== "string") {
+      throw new Error("fixtures[].name must be a string");
+    }
+  }
+
   if (!Array.isArray(data.annotations)) {
     throw new Error("annotations must be an array");
   }
 
+  for (const annotation of data.annotations) {
+    if (annotation === null || typeof annotation !== "object") {
+      throw new Error("annotations elements must be objects");
+    }
+    if (typeof annotation.text !== "string") {
+      throw new Error("annotations[].text must be a string");
+    }
+  }
+
   if (!Array.isArray(data.schedules)) {
     throw new Error("schedules must be an array");
+  }
+
+  for (const schedule of data.schedules) {
+    if (schedule === null || typeof schedule !== "object") {
+      throw new Error("schedules elements must be objects");
+    }
+    if (typeof schedule.name !== "string") {
+      throw new Error("schedules[].name must be a string");
+    }
+    if (!Array.isArray(schedule.data)) {
+      throw new Error("schedules[].data must be an array");
+    }
   }
 
   if (!Array.isArray(data.notes)) {

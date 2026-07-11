@@ -1,5 +1,5 @@
 import { GeminiProvider, GEMINI_FLASH_MODEL } from "../providers/gemini.provider";
-import { CLASSIFY_DOCUMENT_PROMPT } from "../prompts/classify-document.prompt";
+import { CLASSIFY_DOCUMENT_PROMPT, buildClassifyPrompt } from "../prompts/classify-document.prompt";
 import { DocumentClassification } from "../types/classification.types";
 import { logger } from "../utils/logger";
 
@@ -17,12 +17,12 @@ export class ClassificationService {
     logger.log("[ClassificationService] Classifying Document...");
 
     const responseSchema = {
-      type: "OBJECT",
+      type: "object",
       properties: {
-        isConstructionDrawing: { type: "BOOLEAN" },
-        confidence: { type: "NUMBER" },
+        isConstructionDrawing: { type: "boolean" },
+        confidence: { type: "number" },
         documentType: {
-          type: "STRING",
+          type: "string",
           enum: [
             "ARCHITECTURAL_DRAWING",
             "STRUCTURAL_DRAWING",
@@ -35,7 +35,7 @@ export class ClassificationService {
             "UNKNOWN"
           ]
         },
-        reason: { type: "STRING" }
+        reason: { type: "string" }
       },
       required: ["isConstructionDrawing", "confidence", "documentType", "reason"]
     };
@@ -49,9 +49,8 @@ export class ClassificationService {
           input
         );
       } else {
-        const prompt = `${CLASSIFY_DOCUMENT_PROMPT}\n${input}`;
         result = await this.geminiProvider.generateJson<DocumentClassification>(
-          prompt,
+          buildClassifyPrompt(input),
           responseSchema
         );
       }

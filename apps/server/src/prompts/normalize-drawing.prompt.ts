@@ -89,7 +89,7 @@ Any general notes, specifications, or callout text paragraphs on the drawing.
   },
   "openings": {
     "doors": [ { "id": string, "type": string, "width": string | null, "location": string, "room": string | null } ],
-    "windows": [ { "id": string, "width": string | null, "height": string | null, "location": string } ]
+    "windows": [ { "id": string, "width": string | null, "height": string | null, "sill": string | null, "location": string } ]
   },
   "fixtures": [
     { "name": string, "type": string, "location": string | null }

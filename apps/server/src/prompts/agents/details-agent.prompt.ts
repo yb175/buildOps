@@ -10,6 +10,8 @@ Extract: drawingNumber, title, project, revision, scale, date, discipline.
 - COLUMNS: Solid square/circular symbols at grid points. Include id, gridReference, size (if labeled), location. Do not infer columns that are not visually marked.
 - BEAMS: Only if explicitly labeled on the plan.
 - GRID LINES: Any alphabetic or numeric grid labels (A, B, 1, 2...).
+- SLABS: Hatched floor panel areas or slab sections explicitly labeled on the drawing. Include id, thickness (if labeled), location. Return [] if not shown.
+- FOUNDATIONS: Footings, pad foundations, or strip foundations explicitly shown in plan (rare in architectural floor plans). Include type, location. Return [] if not shown.
 
 ## 3. FIXTURES & FITTINGS (any visible symbol or label)
 - PLUMBING: WC/toilet, sink, wash basin, bathtub, shower, urinal
@@ -43,12 +45,12 @@ Return valid raw JSON only (no markdown fences):
     "walls": [ { "type": "LOAD_BEARING" | "PARTITION" | "UNKNOWN", "location": string, "thickness": string | null } ],
     "columns": [ { "id": string, "gridReference": string | null, "size": string | null, "location": string } ],
     "beams": [ { "id": string, "size": string | null, "span": string | null } ],
-    "slabs": [],
-    "foundations": [],
+    "slabs": [ { "id": string, "thickness": string | null, "location": string } ],
+    "foundations": [ { "type": string, "location": string } ],
     "gridLines": [ { "label": string, "direction": "HORIZONTAL" | "VERTICAL" } ]
   },
   "fixtures": [
-    { "id": string, "name": string, "category": "PLUMBING" | "APPLIANCE" | "CIRCULATION" | "FURNITURE" | "OTHER", "location": string | null }
+    { "id": string, "name": string, "type": "PLUMBING" | "APPLIANCE" | "CIRCULATION" | "FURNITURE" | "OTHER", "location": string | null }
   ],
   "notes": [ string ],
   "callouts": [ string ]

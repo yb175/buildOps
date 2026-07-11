@@ -35,10 +35,13 @@ describe("GeminiProvider unit tests", () => {
     expect(result).toEqual(mockJson);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(fetchSpy).toHaveBeenCalledWith(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=real-api-key",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
       expect.objectContaining({
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": "real-api-key",
+        },
       })
     );
   });

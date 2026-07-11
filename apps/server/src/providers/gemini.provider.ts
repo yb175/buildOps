@@ -89,10 +89,13 @@ export class GeminiProvider {
           let response: Response;
           try {
             response = await fetch(
-              `${this.baseUrl}/models/${this.model}:generateContent?key=${apiKey}`,
+              `${this.baseUrl}/models/${this.model}:generateContent`,
               {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                  "Content-Type": "application/json",
+                  "x-goog-api-key": apiKey,
+                },
                 body: JSON.stringify({
                   contents: [{ role: "user", parts }],
                   generationConfig,
@@ -135,12 +138,16 @@ export class GeminiProvider {
           try {
             return this.extractJson<T>(text);
           } catch (parseError) {
-            console.error("GEMINI RAW TEXT RESPONSE ON PARSE FAILURE:", text);
+            if (process.env.NODE_ENV !== "production") {
+              console.error("GEMINI RAW TEXT RESPONSE ON PARSE FAILURE:", text);
+            } else {
+              console.error("GEMINI RAW TEXT RESPONSE ON PARSE FAILURE: [Redacted in production]");
+            }
             throw parseError;
           }
         } catch (error: any) {
           lastError = error;
-          const isNetworkOrTransient = error.message?.includes("429") || error.message?.includes("503") || error.message?.includes("fetch");
+          const isNetworkOrTransient = error.name === "AbortError" || error.message?.includes("429") || error.message?.includes("503") || error.message?.includes("fetch") || error.message?.includes("aborted");
           if (isNetworkOrTransient && attempt < retries) {
             console.warn(`[GeminiProvider] Hit transient error (attempt ${attempt}/${retries}). Retrying in ${backoffMs}ms...`);
             await new Promise((resolve) => setTimeout(resolve, backoffMs));
