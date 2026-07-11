@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
+    "postbuild": "if [ \"$NODE_ENV\" = \"production\" ]; then npm prune --omit=dev --prefix ../..; fi",
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
