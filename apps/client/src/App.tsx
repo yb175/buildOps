@@ -22,7 +22,7 @@ function App() {
     setLoadingHealth(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/health`);
+      const res = await fetch(`${API_URL}/status`);
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
       }
@@ -39,7 +39,7 @@ function App() {
 
   const fetchLogs = async () => {
     try {
-      const res = await fetch(`${API_URL}/logs`);
+      const res = await fetch(`${API_URL}/entries`);
       if (res.ok) {
         const data = await res.json();
         setLogs(data);
@@ -54,7 +54,7 @@ function App() {
     if (!newLogMessage.trim()) return;
     setSubmittingLog(true);
     try {
-      const res = await fetch(`${API_URL}/logs`, {
+      const res = await fetch(`${API_URL}/entries`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: newLogMessage }),

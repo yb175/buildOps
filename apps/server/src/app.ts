@@ -16,12 +16,12 @@ app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
 
-// Health check endpoint
-app.get("/health", async (_req, res) => {
+// Status check endpoint
+app.get("/status", async (_req, res) => {
   try {
     // Execute a test query to verify database connectivity
     await prisma.$queryRaw`SELECT 1`;
-
+    
     // Create response adhering to the shared schema
     const health: HealthResponse = {
       status: "ok",
@@ -30,10 +30,10 @@ app.get("/health", async (_req, res) => {
       database: "connected",
     };
 
-    // Return the health status details
+    // Return the status details
     res.json(health);
   } catch (error) {
-    console.error("Database connection error in health check:", error);
+    console.error("Database connection error in status check:", error);
     res.status(500).json({
       status: "error",
       database: "disconnected",
@@ -42,8 +42,8 @@ app.get("/health", async (_req, res) => {
   }
 });
 
-// Extra endpoint to insert a log and query database logs to demonstrate real ORM use
-app.post("/logs", async (req, res) => {
+// Entries endpoints
+app.post("/entries", async (req, res) => {
   try {
     const { message } = req.body;
     if (!message) {
@@ -59,7 +59,7 @@ app.post("/logs", async (req, res) => {
   }
 });
 
-app.get("/logs", async (_req, res) => {
+app.get("/entries", async (_req, res) => {
   try {
     const logs = await prisma.systemLog.findMany({
       orderBy: { createdAt: "desc" },
