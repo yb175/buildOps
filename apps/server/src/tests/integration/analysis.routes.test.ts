@@ -3,14 +3,18 @@ import request from "supertest";
 import { app } from "../../app";
 import { prisma } from "../../config/prisma";
 import * as pdfUtil from "../../utils/pdf.util";
-import { MistralProvider } from "../../providers/mistral.provider";
+import * as pdfRenderer from "../../utils/pdf-renderer.util";
+import { GeminiProvider } from "../../providers/gemini.provider";
 
 describe("analysis.routes integration test", () => {
   let createdDrawingId: string;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
-    
+    vi.stubEnv("GEMINI_API_KEY", "mock-gemini-key");
+    // Always skip real PDF rendering in integration tests
+    vi.spyOn(pdfRenderer, "renderPdfToImages").mockResolvedValue(null);
+
     // Seed a drawing record in PostgreSQL
     const drawing = await prisma.drawing.create({
       data: {
@@ -32,66 +36,116 @@ describe("analysis.routes integration test", () => {
     } catch (e) {
       // Ignore cleanup error if already deleted
     }
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
-  it("should perform E2E analysis, download PDF, call Mistral, persist and return OCR output", async () => {
-    // Mock PDF download
-    const downloadSpy = vi.spyOn(pdfUtil, "downloadPDF").mockResolvedValue(Buffer.from("%PDF-1.4 mock content"));
-
-    // Mock MistralProvider methods
-    const uploadSpy = vi.spyOn(MistralProvider.prototype, "uploadFile").mockResolvedValue("test-file-id");
-    const ocrSpy = vi.spyOn(MistralProvider.prototype, "performOCR").mockResolvedValue({
-      pages: [{ markdown: "Page 1 Extracted content" }],
-    });
+  it("should perform E2E analysis, classify as ARCHITECTURAL_DRAWING, normalize, and return JSON", async () => {
+    vi.spyOn(pdfUtil, "downloadPDF").mockResolvedValue(Buffer.from("%PDF-1.4 Architectural floor layout plan"));
 
     const response = await request(app)
       .post(`/drawings/${createdDrawingId}/analyze`);
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({
-      drawingId: createdDrawingId,
-      ocrOutput: "Page 1 Extracted content",
-    });
-
-    expect(downloadSpy).toHaveBeenCalledWith("https://cloudinary.com/test-pdf");
-    expect(uploadSpy).toHaveBeenCalledTimes(1);
-    expect(ocrSpy).toHaveBeenCalledWith("test-file-id");
+    expect(response.body.drawingId).toBe(createdDrawingId);
+    expect(response.body.parsedJson.schemaVersion).toBe("1.0");
+    expect(response.body.parsedJson.metadata.title).toContain("Floor Plan Mock");
 
     // Verify it is saved in the database
     const updatedDrawing = await prisma.drawing.findUnique({
       where: { id: createdDrawingId },
     });
-    expect(updatedDrawing?.ocrOutput).toBe("Page 1 Extracted content");
+    expect(updatedDrawing?.parsedJson).not.toBeNull();
+    expect((updatedDrawing as any)?.documentType).toBe("ARCHITECTURAL_DRAWING");
+    expect(updatedDrawing?.status).toBe("PARSED");
   });
 
-  it("should return cached OCR output on subsequent analysis requests without invoking Mistral", async () => {
-    // Perform first E2E analysis
-    vi.spyOn(pdfUtil, "downloadPDF").mockResolvedValue(Buffer.from("%PDF-1.4 mock content"));
-    vi.spyOn(MistralProvider.prototype, "uploadFile").mockResolvedValue("test-file-id");
-    vi.spyOn(MistralProvider.prototype, "performOCR").mockResolvedValue({
-      pages: [{ markdown: "Cached content text" }],
+  it("should perform E2E analysis, classify as STRUCTURAL_DRAWING, and return JSON", async () => {
+    vi.spyOn(pdfUtil, "downloadPDF").mockResolvedValue(Buffer.from("%PDF-1.4 Beams and columns structural design details"));
+
+    const response = await request(app)
+      .post(`/drawings/${createdDrawingId}/analyze`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.parsedJson.schemaVersion).toBe("1.0");
+
+    const updatedDrawing = await prisma.drawing.findUnique({
+      where: { id: createdDrawingId },
     });
+    expect((updatedDrawing as any)?.documentType).toBe("STRUCTURAL_DRAWING");
+    expect(updatedDrawing?.status).toBe("PARSED");
+  });
+
+  it("should perform E2E analysis, classify as INTERIOR_DRAWING, and return JSON", async () => {
+    vi.spyOn(pdfUtil, "downloadPDF").mockResolvedValue(Buffer.from("%PDF-1.4 Interior furniture and finish plans"));
+
+    const response = await request(app)
+      .post(`/drawings/${createdDrawingId}/analyze`);
+
+    expect(response.status).toBe(200);
+
+    const updatedDrawing = await prisma.drawing.findUnique({
+      where: { id: createdDrawingId },
+    });
+    expect((updatedDrawing as any)?.documentType).toBe("INTERIOR_DRAWING");
+  });
+
+  it("should return HTTP 422 if the document is classified as a RESUME", async () => {
+    vi.spyOn(pdfUtil, "downloadPDF").mockResolvedValue(Buffer.from("%PDF-1.4 Professional Resume of John Doe with employment experience"));
+
+    const response = await request(app)
+      .post(`/drawings/${createdDrawingId}/analyze`);
+
+    expect(response.status).toBe(422);
+    expect(response.body).toEqual({
+      error: "Unsupported document type.",
+      documentType: "RESUME",
+      confidence: 0.99,
+      reason: "Detected employment history instead of construction drawing.",
+    });
+
+    // Verify drawing status is updated to FAILED
+    const updatedDrawing = await prisma.drawing.findUnique({
+      where: { id: createdDrawingId },
+    });
+    expect(updatedDrawing?.status).toBe("FAILED");
+  });
+
+  it("should return HTTP 422 if the document is classified as an INVOICE", async () => {
+    vi.spyOn(pdfUtil, "downloadPDF").mockResolvedValue(Buffer.from("%PDF-1.4 Billing Invoice statement showing total payment due"));
+
+    const response = await request(app)
+      .post(`/drawings/${createdDrawingId}/analyze`);
+
+    expect(response.status).toBe(422);
+    expect(response.body.documentType).toBe("INVOICE");
+
+    const updatedDrawing = await prisma.drawing.findUnique({
+      where: { id: createdDrawingId },
+    });
+    expect(updatedDrawing?.status).toBe("FAILED");
+  });
+
+  it("should return cached parsed JSON on subsequent analysis requests without calling Gemini", async () => {
+    // 1. Perform first E2E analysis to cache it
+    vi.spyOn(pdfUtil, "downloadPDF").mockResolvedValue(Buffer.from("%PDF-1.4 Architectural floor layout plan"));
 
     const response1 = await request(app).post(`/drawings/${createdDrawingId}/analyze`);
     expect(response1.status).toBe(200);
-    expect(response1.body.ocrOutput).toBe("Cached content text");
 
-    // Reset spies to check invocation counts
+    // 2. Mock GeminiProvider to spy on invocations
     vi.restoreAllMocks();
+    const geminiSpy = vi.spyOn(GeminiProvider.prototype, "generateJson");
     const downloadSpy = vi.spyOn(pdfUtil, "downloadPDF");
-    const uploadSpy = vi.spyOn(MistralProvider.prototype, "uploadFile");
-    const ocrSpy = vi.spyOn(MistralProvider.prototype, "performOCR");
 
-    // Perform second analysis request
+    // 3. Call endpoint a second time
     const response2 = await request(app).post(`/drawings/${createdDrawingId}/analyze`);
     expect(response2.status).toBe(200);
-    expect(response2.body.ocrOutput).toBe("Cached content text");
+    expect(response2.body.parsedJson).toBeDefined();
 
-    // Verify Mistral and download was not called again
+    // Verify Gemini and downloads were skipped
+    expect(geminiSpy).not.toHaveBeenCalled();
     expect(downloadSpy).not.toHaveBeenCalled();
-    expect(uploadSpy).not.toHaveBeenCalled();
-    expect(ocrSpy).not.toHaveBeenCalled();
   });
 
   it("should return 404 if the drawing ID is not found", async () => {
@@ -102,18 +156,11 @@ describe("analysis.routes integration test", () => {
     expect(response.body.error).toContain("Drawing not found");
   });
 
-  it("should return 500 if Cloudinary download fails", async () => {
-    vi.spyOn(pdfUtil, "downloadPDF").mockRejectedValue(new Error("Cloudinary download failure: Network connection lost"));
+  it("should return 500 if Gemini API fails during classification", async () => {
+    vi.spyOn(pdfUtil, "downloadPDF").mockResolvedValue(Buffer.from("%PDF-1.4 Valid building floor layout"));
 
-    const response = await request(app).post(`/drawings/${createdDrawingId}/analyze`);
-
-    expect(response.status).toBe(500);
-    expect(response.body.error).toContain("Unexpected server error during analysis.");
-  });
-
-  it("should return 500 if Mistral API fails", async () => {
-    vi.spyOn(pdfUtil, "downloadPDF").mockResolvedValue(Buffer.from("%PDF-1.4 mock content"));
-    vi.spyOn(MistralProvider.prototype, "uploadFile").mockRejectedValue(new Error("Mistral API failure: rate limit"));
+    // Make Gemini throw an error
+    vi.spyOn(GeminiProvider.prototype, "generateJson").mockRejectedValue(new Error("Gemini quota exceeded"));
 
     const response = await request(app).post(`/drawings/${createdDrawingId}/analyze`);
 
