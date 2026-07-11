@@ -15,6 +15,7 @@ export class DrawingRepository {
     fileUrl: string;
     publicId: string;
     discipline: Discipline;
+    projectName?: string;
   }): Promise<Drawing> {
     return prisma.drawing.create({
       data: {
@@ -24,12 +25,32 @@ export class DrawingRepository {
         publicId: data.publicId,
         discipline: data.discipline,
         status: "UPLOADED",
-      },
+        projectName: data.projectName || "500 Gaj Residence",
+      } as any,
     });
   }
 
   async findById(id: string): Promise<Drawing | null> {
     return prisma.drawing.findUnique({
+      where: { id },
+    });
+  }
+
+  async findAll(): Promise<Drawing[]> {
+    return prisma.drawing.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async findByProject(projectName: string): Promise<Drawing[]> {
+    return prisma.drawing.findMany({
+      where: { projectName } as any,
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async delete(id: string): Promise<Drawing> {
+    return prisma.drawing.delete({
       where: { id },
     });
   }

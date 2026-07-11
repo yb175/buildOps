@@ -15,7 +15,8 @@ export class DrawingService {
   async handleUpload(
     fileBuffer: Buffer,
     fileName: string,
-    discipline: Discipline
+    discipline: Discipline,
+    projectName?: string
   ): Promise<{ drawing: Drawing; isDuplicate: boolean }> {
     console.log(`[DrawingService] Starting upload processing for file: ${fileName}`);
     const hash = computeSHA256(fileBuffer, discipline);
@@ -42,6 +43,7 @@ export class DrawingService {
         fileUrl: uploadResult.secure_url,
         publicId: uploadResult.public_id,
         discipline,
+        projectName,
       });
       console.log(`[DrawingService] Successfully persisted drawing '${fileName}' with ID: ${newDrawing.id}`);
       return { drawing: newDrawing, isDuplicate: false };

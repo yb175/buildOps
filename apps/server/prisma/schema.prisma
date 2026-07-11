@@ -47,6 +47,7 @@ model Drawing {
   documentType             String?        @map("document_type") @db.VarChar
   classificationConfidence Float?         @map("classification_confidence")
   createdAt                DateTime       @default(now()) @map("created_at") @db.Timestamp
+  projectName              String?        @map("project_name") @db.VarChar
 
   conflicts  Conflict[]
   rfis       Rfi[]
